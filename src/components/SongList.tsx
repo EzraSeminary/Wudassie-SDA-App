@@ -11,6 +11,7 @@ type Song = {
   lyrics: string;
 };
 
+
 type SongListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SongList'>;
 
 const SongList = () => {
