@@ -2,30 +2,34 @@ import React, {useEffect, useState} from 'react';
 import {FlatList, Text, TouchableOpacity, View, StyleSheet} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {RootStackParamList} from '../../App';
-import hymnalData from './SDA_Hymnal.json';
-import tw from './../../tailwind';
+import {RootStackParamList} from '../../../App';
+import hymnalData from './HagerignaData.json';
+import tw from './../../../tailwind';
 
 type Song = {
   title: string;
   lyrics: string;
+  singer: string;
 };
 
-type SongListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SongList'>;
 
-const SongList = () => {
+type SongListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'HagerignaList'>;
+
+const HagerignaList = () => {
   const [songs, setSongs] = useState<Song[]>([]);
   const navigation = useNavigation<SongListNavigationProp>();
 
   useEffect(() => {
     const loadFile = () => {
       try {
-        const newTitles = hymnalData.resources.array[0].item; // Titles array
-        const newSongs = hymnalData.resources.array[2].item; // Lyrics array
+        const newTitles = hymnalData.resources.array[2].item; // Titles array
+        const newSinger = hymnalData.resources.array[0].item; // Singer array
+        const newSongs = hymnalData.resources.array[1].item; // Lyrics array
 
         const combinedSongs = newTitles.map((title: string, index: number) => ({
           title,
           lyrics: newSongs[index],
+          singer: newSinger[index],
         }));
 
         setSongs(combinedSongs);
@@ -39,7 +43,7 @@ const SongList = () => {
   }, []);
 
   const handleSelect = (song: Song, index: number) => {
-    navigation.navigate('SongDetail', {song, songNumber: index + 1});
+    navigation.navigate('HagerignaDetail', {song, songNumber: index + 1});
   };
 
   return (
@@ -48,10 +52,17 @@ const SongList = () => {
         data={songs}
         keyExtractor={item => item.title}
         renderItem={({item, index}) => (
-          <TouchableOpacity onPress={() => handleSelect(item, index)}>
-            <Text style={tw` text-2xl font-nokia-bold border-b border-accent-7 p-4`}>
-              {index + 1} - {item.title}
-            </Text>
+          <TouchableOpacity onPress={() => handleSelect(item, index)}
+          style={tw`flex-row items-center border-b border-accent-7 p-4`}>
+            <Text style={tw`text-3xl font-nokia-bold text-secondary-6`}> {index + 1} - </Text>
+            <View style={tw`pl-2`}>
+                <Text style={tw` text-2xl font-nokia-bold text-secondary-6`}>
+                {item.title}
+                </Text>
+                <Text style={tw` text-md font-nokia-bold text-accent-7`}>
+                {item.singer}
+                </Text>
+            </View>
           </TouchableOpacity>
         )}
       />
@@ -69,4 +80,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SongList;
+export default HagerignaList;
