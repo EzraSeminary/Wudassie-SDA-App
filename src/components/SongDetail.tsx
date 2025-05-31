@@ -1,52 +1,225 @@
-import React, { useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { RouteProp, useRoute } from '@react-navigation/native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
 import { RootStackParamList } from '../../App';
-import tw from './../../tailwind';
-// import CustomBottomSheet from './CustomBottomSheet';
-import Icon from 'react-native-vector-icons/FontAwesome';
+import { ArrowLeftIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon, AdjustmentsHorizontalIcon, HashtagIcon } from 'react-native-heroicons/outline';
+import FontSizePopup from './CustomBottomSheet';
+import NumpadModal from './NumpadModal';
+import tw from '../../tailwind';
+import { PanGestureHandler, State } from 'react-native-gesture-handler';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import hymnalData from './SDA_Hymnal.json';
 
 type SongDetailRouteProp = RouteProp<RootStackParamList, 'SongDetail'>;
+type SongDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SongDetail'>;
 
 const SongDetail = () => {
-  // const sheetRef = useRef<BottomSheet>(null);
   const route = useRoute<SongDetailRouteProp>();
+  const navigation = useNavigation<SongDetailNavigationProp>();
   const { song, songNumber } = route.params;
   const fontSize = useSelector((state: RootState) => state.fontSize.fontSize);
+  const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
+  const [isPopupVisible, setPopupVisible] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [isNumpadVisible, setNumpadVisible] = useState(false);
+
+  const handleOpenPopup = () => setPopupVisible(true);
+  const handleClosePopup = () => setPopupVisible(false);
+  const toggleFullScreen = () => setIsFullScreen(!isFullScreen);
+  const handleOpenNumpad = () => setNumpadVisible(true);
+  const handleCloseNumpad = () => setNumpadVisible(false);
+
+  // Get total songs count
+  const totalSongs = hymnalData.resources.array[0].item.length;
+
+  const handleBackPress = () => {
+    navigation.navigate('SongList');
+  };
+
+  const handleJumpToSong = (songNumber: number) => {
+    const newSongIndex = songNumber - 1;
+    const newTitle = hymnalData.resources.array[0].item[newSongIndex];
+    const newLyrics = hymnalData.resources.array[2].item[newSongIndex];
+    
+    const newSong = {
+      title: newTitle,
+      lyrics: newLyrics,
+    };
+
+    navigation.setParams({
+      song: newSong,
+      songNumber: songNumber,
+    });
+  };
+
+  const navigateToSong = (direction: 'next' | 'previous') => {
+    let newSongNumber = songNumber;
+    
+    if (direction === 'next' && songNumber < totalSongs) {
+      newSongNumber = songNumber + 1;
+    } else if (direction === 'previous' && songNumber > 1) {
+      newSongNumber = songNumber - 1;
+    } else {
+      return; // Don't navigate if at boundaries
+    }
+
+    const newSongIndex = newSongNumber - 1;
+    const newTitle = hymnalData.resources.array[0].item[newSongIndex];
+    const newLyrics = hymnalData.resources.array[2].item[newSongIndex];
+    
+    const newSong = {
+      title: newTitle,
+      lyrics: newLyrics,
+    };
+
+    navigation.setParams({
+      song: newSong,
+      songNumber: newSongNumber,
+    });
+  };
+
+  const onSwipeGesture = (event: any) => {
+    if (event.nativeEvent.state === State.END) {
+      const { translationX } = event.nativeEvent;
+      
+      if (translationX > 50) {
+        // Swiped right - go to previous song
+        navigateToSong('previous');
+      } else if (translationX < -50) {
+        // Swiped left - go to next song
+        navigateToSong('next');
+      }
+    }
+  };
+
+  const dynamicStyles = {
+    container: tw`flex-1 pt-4 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`,
+    title: [
+      tw`font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
+      { 
+        fontSize: fontSize + 6,
+        lineHeight: 32
+      }
+    ],
+    lyrics: [
+      tw`font-nokia-bold mb-2 ${isDarkMode ? 'text-primary-6' : 'text-secondary-6'}`,
+      { 
+        fontSize,
+        lineHeight: 28
+      }
+    ],
+    header: tw`flex-row justify-between items-center p-5 border-b pt-12 font-nokia-bold ${isDarkMode ? 'border-dark-primary-8' : 'border-primary-6'}`
+  };
+
+  if (isFullScreen) {
+    return (
+      <View style={[dynamicStyles.container, tw`pt-12`]}>
+        <View style={tw`flex-row justify-between items-center absolute top-12 left-5 right-5 z-10`}>
+          <TouchableOpacity 
+            style={tw`p-2`}
+            onPress={toggleFullScreen}
+          >
+            <ArrowsPointingInIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={tw`p-2`}
+            onPress={handleOpenPopup}
+          >
+            <AdjustmentsHorizontalIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
+          </TouchableOpacity>
+        </View>
+        <PanGestureHandler onHandlerStateChange={onSwipeGesture}>
+          <ScrollView 
+            contentContainerStyle={tw`p-5 pt-16`}
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={[dynamicStyles.title, tw`text-center mb-8 font-nokia-bold`]}>
+              {songNumber}. {song.title}
+            </Text>
+            <View style={tw`px-2`}>
+              {song.lyrics.split('\\n').map((line, index) => (
+                <Text key={index} style={[dynamicStyles.lyrics, tw`text-center mb-3 font-nokia-bold`, { lineHeight: 32 }]}>
+                  {line}
+                </Text>
+              ))}
+            </View>
+          </ScrollView>
+        </PanGestureHandler>
+        <FontSizePopup visible={isPopupVisible} onClose={handleClosePopup} />
+        <NumpadModal 
+          visible={isNumpadVisible}
+          onClose={handleCloseNumpad}
+          onJumpToSong={handleJumpToSong}
+          maxSongs={totalSongs}
+          title="Hymnal"
+        />
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.container}>
-      <Text style={[tw`text-4xl font-nokia-bold text-secondary-6`, { fontSize: fontSize + 6 }]}>
-        {songNumber}. {song.title}
-      </Text>
-      <View style={tw`mt-8`}>
-        {song.lyrics.split('\\n').map((line, index) => (
-          <Text key={index} style={[tw`font-nokia-bold text-accent-7`, { fontSize }]}>
-            {line}
+    <View style={dynamicStyles.container}>
+      <View style={dynamicStyles.header}>
+        <TouchableOpacity 
+          onPress={handleBackPress}
+          style={tw`p-2`}
+        >
+          <ArrowLeftIcon size={24} color="#EA9215" />
+        </TouchableOpacity>
+        
+        <View style={tw`flex-row items-center flex-1 mx-3`}>
+          <Text style={[dynamicStyles.title, tw`flex-1 font-nokia-bold`]} numberOfLines={2}>
+            {songNumber}. {song.title}
           </Text>
-        ))}
+        </View>
+        
+        <TouchableOpacity onPress={toggleFullScreen} style={tw`p-2 mr-2`}>
+          <ArrowsPointingOutIcon size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          onPress={handleOpenPopup}
+          style={tw`p-2`}
+        >
+          <AdjustmentsHorizontalIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+        </TouchableOpacity>
       </View>
-      {/* <TouchableOpacity style={styles.iconButton} onPress={() => sheetRef.current?.expand()}>
-        <Icon name="font" size={30} color="black" />
-      </TouchableOpacity> 
-      <CustomBottomSheet ref={sheetRef} /> */}
+      
+      <PanGestureHandler onHandlerStateChange={onSwipeGesture}>
+        <ScrollView 
+          style={tw`flex-1`}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={tw`p-5`}>
+            {song.lyrics.split('\\n').map((line, index) => (
+              <Text key={index} style={dynamicStyles.lyrics}>
+                {line}
+              </Text>
+            ))}
+          </View>
+        </ScrollView>
+      </PanGestureHandler>
+
+      {/* Floating Numpad Button */}
+      <TouchableOpacity 
+        style={tw`absolute bottom-28 right-5 bg-accent-6 rounded-full p-4 shadow-lg`}
+        onPress={handleOpenNumpad}
+      >
+        <HashtagIcon size={24} color="#FDFDFD" />
+      </TouchableOpacity>
+
+      <FontSizePopup visible={isPopupVisible} onClose={handleClosePopup} />
+      <NumpadModal 
+        visible={isNumpadVisible}
+        onClose={handleCloseNumpad}
+        onJumpToSong={handleJumpToSong}
+        maxSongs={totalSongs}
+        title="Hymnal"
+      />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-  },
-  iconButton: {
-    position: 'absolute',
-    bottom: 80,
-    left: 20,
-    zIndex: 10,
-  },
-});
 
 export default SongDetail;

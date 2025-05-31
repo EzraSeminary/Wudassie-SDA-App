@@ -9,14 +9,16 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Provider } from 'react-redux';
-import store from './src/store';
+import { Provider, useSelector } from 'react-redux';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import store, { RootState } from './src/store';
 import SongList from './src/components/SongList';
 import SongDetail from './src/components/SongDetail';
 import HagerignaList from './src/components/Hagerigna/HagerignaList';
 import HagerignaDetail from './src/components/Hagerigna/HagerignaDetail';
-import YouTubeLinks from './src/components/YoutubeLink/YouTubeLinks';
 import Settings from './src/components/Settings/Settings';
+import MusicPlayer from './src/components/YoutubeLink/YouTubeLinks';
+import { BookOpenIcon, MusicalNoteIcon, PlayIcon, Cog6ToothIcon} from 'react-native-heroicons/outline';
 
 export type RootStackParamList = {
   SongDetail: { song: { title: string; lyrics: string; }, songNumber: number };
@@ -26,6 +28,7 @@ export type RootStackParamList = {
     song: {
       title: string;
       lyrics: string;
+      singer: string;
     }, songNumber: number
   };
 };
@@ -33,53 +36,98 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const SongStack = () => (
-  <Stack.Navigator initialRouteName="SongList">
+  <Stack.Navigator 
+    initialRouteName="SongList"
+    screenOptions={{
+      headerShown: false,
+    }}
+  >
     <Stack.Screen 
       name="SongList" 
       component={SongList}
-      options={{title: 'Songs'}}
     />
     <Stack.Screen 
       name="SongDetail" 
       component={SongDetail}
-      options={({route}) => ({title: route.params.song.title})}
     />
   </Stack.Navigator>
 );
 
 const HagerignaStack = () => (
-  <Stack.Navigator initialRouteName="HagerignaList">
+  <Stack.Navigator 
+    initialRouteName="HagerignaList"
+    screenOptions={{
+      headerShown: false,
+    }}
+  >
     <Stack.Screen 
       name="HagerignaList" 
       component={HagerignaList}
-      options={{title: 'Songs'}}
     />
     <Stack.Screen 
       name="HagerignaDetail" 
       component={HagerignaDetail}
-      options={({route}) => ({title: route.params.song.title})}
     />
   </Stack.Navigator>
 );
 
 const Tab = createBottomTabNavigator();
 
-const TabNavigator = () => (
-  <Tab.Navigator screenOptions={{headerShown: false}}>
-    <Tab.Screen name="Hymn Songs" component={SongStack} />
-    <Tab.Screen name="Hagerigna Songs" component={HagerignaStack} />
-    <Tab.Screen name="YouTube Links" component={YouTubeLinks} />
-    <Tab.Screen name="Settings" component={Settings} />
-  </Tab.Navigator>
-);
+const TabNavigator = () => {
+  const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
+  
+  return (
+    <Tab.Navigator 
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarIcon: ({ color, size }) => {
+          let IconComponent;
+
+          if (route.name === 'Hymnals') {
+            IconComponent = BookOpenIcon;
+          } else if (route.name === 'Hagerigna') {
+            IconComponent = MusicalNoteIcon;
+          } else if (route.name === 'Music Player') {
+            IconComponent = PlayIcon;
+          } else if (route.name === 'Settings') {
+            IconComponent = Cog6ToothIcon;
+          }
+
+          return IconComponent ? <IconComponent size={size} color={color} /> : null;
+        },
+        tabBarActiveTintColor: '#EA9215',
+        tabBarInactiveTintColor: isDarkMode ? '#9CA3AF' : '#6B7280',
+        tabBarStyle: {
+          backgroundColor: isDarkMode ? '#1A2024' : '#FDFDFD',
+          borderTopColor: isDarkMode ? '#374151' : '#E5E7EB',
+          position: 'absolute',
+          height: 85,
+          paddingBottom: 20,
+          paddingTop: 10,
+        },
+        tabBarLabelStyle: {
+          fontFamily: 'Nokia-Bold',
+          fontSize: 12,
+        },
+      })}
+    >
+      <Tab.Screen name="Hymnals" component={SongStack} />
+      <Tab.Screen name="Hagerigna" component={HagerignaStack} />
+      <Tab.Screen name="Music Player" component={MusicPlayer} />
+      <Tab.Screen name="Settings" component={Settings} />
+    </Tab.Navigator>
+  );
+};
 
 function App(): React.JSX.Element {
   return (
-    <Provider store={store}>
-      <NavigationContainer>
-        <TabNavigator />
-      </NavigationContainer>
-    </Provider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Provider store={store}>
+        <NavigationContainer>
+          <TabNavigator />
+        </NavigationContainer>
+      </Provider>
+    </GestureHandlerRootView>
   );
 }
 

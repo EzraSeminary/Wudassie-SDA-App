@@ -5,13 +5,21 @@ interface FontSizeState {
   fontSize: number;
 }
 
-const initialState: FontSizeState = {
+interface ThemeState {
+  isDarkMode: boolean;
+}
+
+const initialFontSizeState: FontSizeState = {
   fontSize: 18,
+};
+
+const initialThemeState: ThemeState = {
+  isDarkMode: false,
 };
 
 const fontSizeSlice = createSlice({
   name: 'fontSize',
-  initialState,
+  initialState: initialFontSizeState,
   reducers: {
     setFontSize(state, action: PayloadAction<number>) {
       state.fontSize = action.payload;
@@ -19,11 +27,26 @@ const fontSizeSlice = createSlice({
   },
 });
 
+const themeSlice = createSlice({
+  name: 'theme',
+  initialState: initialThemeState,
+  reducers: {
+    toggleDarkMode(state) {
+      state.isDarkMode = !state.isDarkMode;
+    },
+    setDarkMode(state, action: PayloadAction<boolean>) {
+      state.isDarkMode = action.payload;
+    },
+  },
+});
+
 export const { setFontSize } = fontSizeSlice.actions;
+export const { toggleDarkMode, setDarkMode } = themeSlice.actions;
 
 const store = configureStore({
   reducer: {
     fontSize: fontSizeSlice.reducer,
+    theme: themeSlice.reducer,
   },
 });
 
