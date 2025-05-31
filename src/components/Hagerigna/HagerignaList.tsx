@@ -1,12 +1,12 @@
 import React, {useEffect, useState} from 'react';
-import {FlatList, Text, TouchableOpacity, View} from 'react-native';
+import {FlatList, Text, TouchableOpacity, View, TextInput} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useSelector} from 'react-redux';
 import {RootState} from '../../store';
 import {RootStackParamList} from '../../../App';
 import hymnalData from './HagerignaData.json';
-import { MusicalNoteIcon, PlayIcon, HashtagIcon } from 'react-native-heroicons/outline';
+import { MusicalNoteIcon, PlayIcon, HashtagIcon, MagnifyingGlassIcon, XMarkIcon } from 'react-native-heroicons/outline';
 import NumpadModal from './../NumpadModal';
 import tw from '../../../tailwind';
 
@@ -20,12 +20,22 @@ type SongListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Hag
 
 const HagerignaList = () => {
   const [songs, setSongs] = useState<Song[]>([]);
+  const [filteredSongs, setFilteredSongs] = useState<Song[]>([]);
   const [isNumpadVisible, setNumpadVisible] = useState(false);
+  const [isSearchVisible, setSearchVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const navigation = useNavigation<SongListNavigationProp>();
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
 
   const handleOpenNumpad = () => setNumpadVisible(true);
   const handleCloseNumpad = () => setNumpadVisible(false);
+  const handleToggleSearch = () => {
+    setSearchVisible(!isSearchVisible);
+    if (isSearchVisible) {
+      setSearchQuery('');
+      setFilteredSongs(songs);
+    }
+  };
 
   useEffect(() => {
     const loadFile = () => {
@@ -41,6 +51,7 @@ const HagerignaList = () => {
         }));
 
         setSongs(combinedSongs);
+        setFilteredSongs(combinedSongs);
         console.log('Parsed JSON successfully');
       } catch (err) {
         console.error('Error reading JSON file:', err);
@@ -50,8 +61,23 @@ const HagerignaList = () => {
     loadFile();
   }, []);
 
-  const handleSelect = (song: Song, index: number) => {
-    navigation.navigate('HagerignaDetail', {song, songNumber: index + 1});
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredSongs(songs);
+    } else {
+      const filtered = songs.filter((song, _index) =>
+        song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        song.singer.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        song.lyrics.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredSongs(filtered);
+    }
+  }, [searchQuery, songs]);
+
+  const handleSelect = (song: Song, _index: number) => {
+    // Find the original index in the full songs array
+    const originalIndex = songs.findIndex(s => s.title === song.title && s.lyrics === song.lyrics && s.singer === song.singer);
+    navigation.navigate('HagerignaDetail', {song, songNumber: originalIndex + 1});
   };
 
   const handleJumpToSong = (songNumber: number) => {
@@ -72,51 +98,91 @@ const HagerignaList = () => {
     singerName: tw`font-nokia-bold ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`
   };
 
-  const renderSongItem = ({item, index}: {item: Song; index: number}) => (
-    <View style={dynamicStyles.songItem}>
-      <TouchableOpacity
-        style={tw`flex-1 p-4`}
-        onPress={() => handleSelect(item, index)}
-      >
-        <View style={tw`flex-row items-center`}>
-          {/* <MusicalNoteIcon size={20} color="#EA9215" /> */}
-          <Text style={[dynamicStyles.songNumber, tw`ml-3 font-nokia-bold`]}>
-            {index + 1}
-          </Text>
-          <View style={tw`ml-3 flex-1`}>
-            <Text style={[dynamicStyles.songTitle, tw`font-nokia-bold`]} numberOfLines={2}>
-              {item.title}
+  const renderSongItem = ({item, index}: {item: Song; index: number}) => {
+    // Find the original song number
+    const originalIndex = songs.findIndex(s => s.title === item.title && s.lyrics === item.lyrics && s.singer === item.singer);
+    const songNumber = originalIndex + 1;
+    
+    return (
+      <View style={dynamicStyles.songItem}>
+        <TouchableOpacity
+          style={tw`flex-1 p-4`}
+          onPress={() => handleSelect(item, index)}
+        >
+          <View style={tw`flex-row items-center`}>
+            <Text style={[dynamicStyles.songNumber, tw`ml-3 font-nokia-bold`]}>
+              {songNumber}
             </Text>
-            <Text style={[dynamicStyles.singerName, tw`mt-1 font-nokia-bold`]} numberOfLines={1}>
-              {item.singer}
-            </Text>
+            <View style={tw`ml-3 flex-1`}>
+              <Text style={[dynamicStyles.songTitle, tw`font-nokia-bold`]} numberOfLines={2}>
+                {item.title}
+              </Text>
+              <Text style={[dynamicStyles.singerName, tw`mt-1 font-nokia-bold`]} numberOfLines={1}>
+                {item.singer}
+              </Text>
+            </View>
           </View>
-        </View>
-      </TouchableOpacity>
-      
-      <TouchableOpacity 
-        style={tw`p-4 justify-center`}
-        onPress={() => handlePlay(item, index)}
-      >
-        <PlayIcon size={24} color="#EA9215" />
-      </TouchableOpacity>
-    </View>
-  );
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={tw`p-4 justify-center`}
+          onPress={() => handlePlay(item, index)}
+        >
+          <PlayIcon size={24} color="#EA9215" />
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   return (
     <View style={dynamicStyles.container}>
-      <View style={tw`flex-row items-center p-5 pb-4 pt-12`}>
-        <MusicalNoteIcon size={28} color="#EA9215" />
-        <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
-          Hagerigna Songs
-        </Text>
+      <View style={tw`flex-row items-center justify-between p-5 pb-4 pt-12`}>
+        <View style={tw`flex-row items-center flex-1`}>
+          <MusicalNoteIcon size={28} color="#EA9215" />
+          <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
+            Hagerigna Songs
+          </Text>
+        </View>
+        <TouchableOpacity 
+          style={tw`p-2`}
+          onPress={handleToggleSearch}
+        >
+          {isSearchVisible ? (
+            <XMarkIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
+          ) : (
+            <MagnifyingGlassIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
+          )}
+        </TouchableOpacity>
       </View>
+
+      {isSearchVisible && (
+        <View style={tw`px-5 pb-4`}>
+          <TextInput
+            style={tw`h-12 rounded-lg px-4 border-2 font-nokia-bold ${isDarkMode ? 'bg-dark-primary-8 border-dark-primary-6 text-dark-secondary-1' : 'bg-primary-3 border-primary-6 text-secondary-10'}`}
+            placeholder="Search titles, singers, or lyrics..."
+            placeholderTextColor={isDarkMode ? '#9CA3AF' : '#6B7280'}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoFocus
+          />
+        </View>
+      )}
+
       <FlatList
-        data={songs}
+        data={filteredSongs}
         keyExtractor={(item, index) => `${item.title}-${index}`}
         renderItem={renderSongItem}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={tw`px-4 pb-24`}
+        ListEmptyComponent={
+          searchQuery ? (
+            <View style={tw`p-8 items-center`}>
+              <Text style={tw`text-lg font-nokia-bold text-center ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`}>
+                No songs found for "{searchQuery}"
+              </Text>
+            </View>
+          ) : null
+        }
       />
 
       {/* Floating Numpad Button */}
