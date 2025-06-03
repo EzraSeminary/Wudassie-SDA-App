@@ -4,6 +4,7 @@ import Slider from '@react-native-community/slider';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, setFontSize, toggleDarkMode } from '../../store';
 import { Cog6ToothIcon, MusicalNoteIcon, BookOpenIcon, HeartIcon } from 'react-native-heroicons/outline';
+import { getHeaderPaddingTop, getCardStyle } from '../../utils/platformUtils';
 import tw from '../../../tailwind';
 
 const Settings = () => {
@@ -15,9 +16,20 @@ const Settings = () => {
     dispatch(toggleDarkMode());
   };
 
+  const headerPaddingTop = getHeaderPaddingTop();
+
   return (
-    <ScrollView style={tw`flex-1 p-5 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}>
-      <View style={tw`flex-row items-center mt-10 mb-8 pb-5 border-b ${isDarkMode ? 'border-dark-primary-8' : 'border-primary-6'}`}>
+    <ScrollView 
+      style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}
+      contentContainerStyle={tw`p-5 pb-24`}
+      showsVerticalScrollIndicator={false}
+      scrollEnabled={true}
+      bounces={true}
+    >
+      <View style={[
+        tw`flex-row items-center mb-8 pb-5 border-b ${isDarkMode ? 'border-dark-primary-8' : 'border-primary-6'}`,
+        { marginTop: headerPaddingTop }
+      ]}>
         <Cog6ToothIcon size={40} color="#EA9215" />
         <Text style={tw`text-3xl font-nokia-bold ml-4 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
           Settings
@@ -25,7 +37,10 @@ const Settings = () => {
       </View>
 
       {/* Font Size Section */}
-      <View style={tw`p-5 mb-5 rounded-xl ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'} shadow-sm`}>
+      <View style={[
+        tw`p-5 mb-5 rounded-xl ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
+        getCardStyle()
+      ]}>
         <Text style={tw`text-xl font-nokia-bold mb-3 text-accent-6`}>Font Size</Text>
         <Text style={tw`text-sm mb-4 opacity-70 ${isDarkMode ? 'text-dark-secondary-2' : 'text-secondary-9'}`}>
           Adjust the font size for better readability
@@ -49,7 +64,10 @@ const Settings = () => {
       </View>
 
       {/* Theme Section */}
-      <View style={tw`p-5 mb-5 rounded-xl ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'} shadow-sm`}>
+      <View style={[
+        tw`p-5 mb-5 rounded-xl ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
+        getCardStyle()
+      ]}>
         <Text style={tw`text-xl font-nokia-bold mb-3 text-accent-6`}>Appearance</Text>
         <View style={tw`flex-row justify-between items-center`}>
           <View style={tw`flex-1`}>
@@ -68,7 +86,10 @@ const Settings = () => {
       </View>
 
       {/* About Section */}
-      <View style={tw`p-5 mb-6 rounded-xl ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'} shadow-sm`}>
+      <View style={[
+        tw`p-5 mb-6 rounded-xl ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
+        getCardStyle()
+      ]}>
         <Text style={tw`text-xl font-nokia-bold mb-4 text-accent-6`}>About</Text>
         <View style={tw`flex-row items-center mb-4`}>
           <BookOpenIcon size={20} color="#EA9215" />

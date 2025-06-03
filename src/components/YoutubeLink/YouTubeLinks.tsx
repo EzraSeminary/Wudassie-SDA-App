@@ -1,25 +1,42 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableWithoutFeedback, ScrollView } from 'react-native';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { MusicalNoteIcon, PlayIcon, BackwardIcon, ForwardIcon, SpeakerWaveIcon } from 'react-native-heroicons/outline';
+import { getHeaderPaddingTop, getCardStyle } from '../../utils/platformUtils';
 import tw from '../../../tailwind';
 
 const MusicPlayer = () => {
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
+  const headerPaddingTop = getHeaderPaddingTop();
 
   const dynamicStyles = {
-    container: tw`flex-1 p-5 pt-12 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`,
-    card: tw`p-8 mb-8 rounded-2xl items-center shadow-sm ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
+    container: tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`,
+    card: [
+      tw`p-8 mb-8 rounded-2xl items-center ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
+      getCardStyle()
+    ],
     text: tw`text-base font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
     subtitle: tw`text-base font-nokia-bold text-center leading-6 mb-1 ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`,
     subText: tw`text-base font-nokia-regular text-center leading-6 mb-1 ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`,
-    controlButton: tw`p-4 mx-5 ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`
+    controlButton: [
+      tw`p-4 mx-5 ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
+      getCardStyle()
+    ]
   };
 
   return (
-    <View style={dynamicStyles.container}>
-      <View style={tw`flex-row items-center mb-8`}>
+    <ScrollView 
+      style={dynamicStyles.container}
+      contentContainerStyle={tw`p-5 pb-24`}
+      showsVerticalScrollIndicator={false}
+      scrollEnabled={true}
+      bounces={true}
+    >
+      <View style={[
+        tw`flex-row items-center mb-8`,
+        { marginTop: headerPaddingTop }
+      ]}>
         <MusicalNoteIcon size={28} color="#EA9215" />
         <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
           Music Player
@@ -36,17 +53,23 @@ const MusicPlayer = () => {
         </Text>
 
         <View style={tw`flex-row items-center justify-center space-x-6`}>
-          <TouchableOpacity style={dynamicStyles.controlButton}>
-            <BackwardIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
-          </TouchableOpacity>
+          <TouchableWithoutFeedback>
+            <View style={dynamicStyles.controlButton}>
+              <BackwardIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
+            </View>
+          </TouchableWithoutFeedback>
           
-          <TouchableOpacity style={[dynamicStyles.controlButton, tw`bg-orange-500 p-4`]}>
-            <PlayIcon size={32} color="#FDFDFD" />
-          </TouchableOpacity>
+          <TouchableWithoutFeedback>
+            <View style={[dynamicStyles.controlButton, tw`bg-orange-500 p-4`]}>
+              <PlayIcon size={32} color="#FDFDFD" />
+            </View>
+          </TouchableWithoutFeedback>
           
-          <TouchableOpacity style={dynamicStyles.controlButton}>
-            <ForwardIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
-          </TouchableOpacity>
+          <TouchableWithoutFeedback>
+            <View style={dynamicStyles.controlButton}>
+              <ForwardIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
+            </View>
+          </TouchableWithoutFeedback>
         </View>
       </View>
 
@@ -60,7 +83,7 @@ const MusicPlayer = () => {
         </View>
       </View>
 
-      <View style={[dynamicStyles.card, tw`mb-24`]}>
+      <View style={dynamicStyles.card}>
         <Text style={[dynamicStyles.text, tw`text-lg font-nokia-bold mb-4`]}>
           Coming Soon
         </Text>
@@ -77,7 +100,7 @@ const MusicPlayer = () => {
           • Audio streaming from backend
         </Text>
       </View>
-    </View>
+    </ScrollView>
   );
 };
 

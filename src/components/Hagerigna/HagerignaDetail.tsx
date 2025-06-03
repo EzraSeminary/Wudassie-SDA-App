@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableWithoutFeedback } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
@@ -7,8 +7,10 @@ import { RootStackParamList } from '../../../App';
 import { ArrowLeftIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon, AdjustmentsHorizontalIcon, HashtagIcon } from 'react-native-heroicons/outline';
 import FontSizePopup from './../CustomBottomSheet';
 import NumpadModal from './../NumpadModal';
+import { getHeaderPaddingTop, getCardStyle } from '../../utils/platformUtils';
 import tw from '../../../tailwind';
-import { PanGestureHandler, State } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import hagerignaData from './HagerignaData.json';
 
@@ -84,19 +86,29 @@ const HagerignaDetail = () => {
     });
   };
 
-  const onSwipeGesture = (event: any) => {
-    if (event.nativeEvent.state === State.END) {
-      const { translationX } = event.nativeEvent;
-      
-      if (translationX > 50) {
-        // Swiped right - go to previous song
-        navigateToSong('previous');
-      } else if (translationX < -50) {
-        // Swiped left - go to next song
-        navigateToSong('next');
-      }
-    }
+  const handleSwipeNavigation = (direction: 'next' | 'previous') => {
+    navigateToSong(direction);
   };
+
+  const panGesture = Gesture.Pan()
+    .minDistance(50)
+    .onEnd((event) => {
+      const { translationX, velocityX } = event;
+      
+      // Only trigger if it's a clear horizontal swipe
+      if (Math.abs(translationX) > 100 && Math.abs(velocityX) > 500) {
+        if (translationX > 0) {
+          // Swiped right - go to previous song
+          runOnJS(handleSwipeNavigation)('previous');
+        } else {
+          // Swiped left - go to next song
+          runOnJS(handleSwipeNavigation)('next');
+        }
+      }
+    })
+    .simultaneousWithExternalGesture();
+
+  const headerPaddingTop = getHeaderPaddingTop();
 
   const dynamicStyles = {
     container: tw`flex-1 pt-4 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`,
@@ -115,30 +127,33 @@ const HagerignaDetail = () => {
         lineHeight: 28
       }
     ],
-    header: tw`flex-row justify-between items-center p-5 border-b pt-12 font-nokia-bold ${isDarkMode ? 'border-dark-primary-8' : 'border-primary-6'}`
+    header: [
+      tw`flex-row justify-between items-center p-5 border-b font-nokia-bold ${isDarkMode ? 'border-dark-primary-8' : 'border-primary-6'}`,
+      { paddingTop: headerPaddingTop }
+    ]
   };
 
   if (isFullScreen) {
     return (
-      <View style={[dynamicStyles.container, tw`pt-12`]}>
-        <View style={tw`flex-row justify-between items-center absolute top-12 left-5 right-5 z-10`}>
-          <TouchableOpacity 
-            style={tw`p-2`}
-            onPress={toggleFullScreen}
-          >
-            <ArrowsPointingInIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={tw`p-2`}
-            onPress={handleOpenPopup}
-          >
-            <AdjustmentsHorizontalIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
-          </TouchableOpacity>
-        </View>
-        <PanGestureHandler onHandlerStateChange={onSwipeGesture}>
+      <GestureDetector gesture={panGesture}>
+        <View style={[dynamicStyles.container, { paddingTop: headerPaddingTop }]}>
+          <View style={tw`flex-row justify-between items-center absolute top-${Math.floor(headerPaddingTop/4)} left-5 right-5 z-10`}>
+            <TouchableWithoutFeedback onPress={toggleFullScreen}>
+              <View style={tw`p-2`}>
+                <ArrowsPointingInIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
+              </View>
+            </TouchableWithoutFeedback>
+            <TouchableWithoutFeedback onPress={handleOpenPopup}>
+              <View style={tw`p-2`}>
+                <AdjustmentsHorizontalIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
           <ScrollView 
             contentContainerStyle={tw`p-5 pt-16`}
             showsVerticalScrollIndicator={false}
+            scrollEnabled={true}
+            bounces={true}
           >
             <Text style={[dynamicStyles.title, tw`text-center mb-2 font-nokia-bold`]}>
               {songNumber}. {song.title}
@@ -156,58 +171,60 @@ const HagerignaDetail = () => {
               ))}
             </View>
           </ScrollView>
-        </PanGestureHandler>
-        <FontSizePopup visible={isPopupVisible} onClose={handleClosePopup} />
-        <NumpadModal 
-          visible={isNumpadVisible}
-          onClose={handleCloseNumpad}
-          onJumpToSong={handleJumpToSong}
-          maxSongs={totalSongs}
-          title="Hagerigna"
-        />
-      </View>
+          <FontSizePopup visible={isPopupVisible} onClose={handleClosePopup} />
+          <NumpadModal 
+            visible={isNumpadVisible}
+            onClose={handleCloseNumpad}
+            onJumpToSong={handleJumpToSong}
+            maxSongs={totalSongs}
+            title="Hagerigna"
+          />
+        </View>
+      </GestureDetector>
     );
   }
 
   return (
-    <View style={dynamicStyles.container}>
-      <View style={dynamicStyles.header}>
-        <TouchableOpacity 
-          onPress={handleBackPress}
-          style={tw`p-2`}
-        >
-          <ArrowLeftIcon size={24} color="#EA9215" />
-        </TouchableOpacity>
-        
-        <View style={tw`flex-row items-center flex-1 mx-3`}>
-          <View style={tw`flex-1`}>
-            <Text style={[dynamicStyles.title, tw`font-nokia-bold`]} numberOfLines={2}>
-              {songNumber}. {song.title}
-            </Text>
-            {song.singer && (
-              <Text style={[dynamicStyles.singer, tw`mt-1 font-nokia-bold`]}>
-                {song.singer}
+    <GestureDetector gesture={panGesture}>
+      <View style={dynamicStyles.container}>
+        <View style={dynamicStyles.header}>
+          <TouchableWithoutFeedback onPress={handleBackPress}>
+            <View style={tw`p-2`}>
+              <ArrowLeftIcon size={24} color="#EA9215" />
+            </View>
+          </TouchableWithoutFeedback>
+          
+          <View style={tw`flex-row items-center flex-1 mx-3`}>
+            <View style={tw`flex-1`}>
+              <Text style={[dynamicStyles.title, tw`font-nokia-bold`]} numberOfLines={2}>
+                {songNumber}. {song.title}
               </Text>
-            )}
+              {song.singer && (
+                <Text style={[dynamicStyles.singer, tw`mt-1 font-nokia-bold`]}>
+                  {song.singer}
+                </Text>
+              )}
+            </View>
           </View>
+          
+          <TouchableWithoutFeedback onPress={toggleFullScreen}>
+            <View style={tw`p-2 mr-2`}>
+              <ArrowsPointingOutIcon size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+            </View>
+          </TouchableWithoutFeedback>
+          
+          <TouchableWithoutFeedback onPress={handleOpenPopup}>
+            <View style={tw`p-2`}>
+              <AdjustmentsHorizontalIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+            </View>
+          </TouchableWithoutFeedback>
         </View>
-        
-        <TouchableOpacity onPress={toggleFullScreen} style={tw`p-2 mr-2`}>
-          <ArrowsPointingOutIcon size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          onPress={handleOpenPopup}
-          style={tw`p-2`}
-        >
-          <AdjustmentsHorizontalIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-        </TouchableOpacity>
-      </View>
 
-      <PanGestureHandler onHandlerStateChange={onSwipeGesture}>
         <ScrollView 
           style={tw`flex-1`}
           showsVerticalScrollIndicator={false}
+          scrollEnabled={true}
+          bounces={true}
         >
           <View style={tw`p-5`}>
 
@@ -218,25 +235,27 @@ const HagerignaDetail = () => {
             ))}
           </View>
         </ScrollView>
-      </PanGestureHandler>
 
-      {/* Floating Numpad Button */}
-      <TouchableOpacity 
-        style={tw`absolute bottom-28 right-5 bg-accent-6 rounded-full p-4 shadow-lg`}
-        onPress={handleOpenNumpad}
-      >
-        <HashtagIcon size={24} color="#FDFDFD" />
-      </TouchableOpacity>
+        {/* Floating Numpad Button */}
+        <TouchableWithoutFeedback onPress={handleOpenNumpad}>
+          <View style={[
+            tw`absolute bottom-28 right-5 bg-accent-6 rounded-full p-4`,
+            getCardStyle()
+          ]}>
+            <HashtagIcon size={24} color="#FDFDFD" />
+          </View>
+        </TouchableWithoutFeedback>
 
-      <FontSizePopup visible={isPopupVisible} onClose={handleClosePopup} />
-      <NumpadModal 
-        visible={isNumpadVisible}
-        onClose={handleCloseNumpad}
-        onJumpToSong={handleJumpToSong}
-        maxSongs={totalSongs}
-        title="Hagerigna"
-      />
-    </View>
+        <FontSizePopup visible={isPopupVisible} onClose={handleClosePopup} />
+        <NumpadModal 
+          visible={isNumpadVisible}
+          onClose={handleCloseNumpad}
+          onJumpToSong={handleJumpToSong}
+          maxSongs={totalSongs}
+          title="Hagerigna"
+        />
+      </View>
+    </GestureDetector>
   );
 };
 
