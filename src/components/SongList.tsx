@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {FlatList, Text, View, TextInput, TouchableWithoutFeedback} from 'react-native';
+import {FlatList, Text, View, TextInput, TouchableWithoutFeedback, SafeAreaView} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useSelector} from 'react-redux';
@@ -8,7 +8,7 @@ import {RootStackParamList} from '../../App';
 import hymnalData from './SDA_Hymnal.json';
 import { BookOpenIcon, HashtagIcon, MagnifyingGlassIcon, XMarkIcon } from 'react-native-heroicons/outline';
 import NumpadModal from './NumpadModal';
-import { getHeaderPaddingTop, getCardStyle } from '../utils/platformUtils';
+import { getCardStyle } from '../utils/platformUtils';
 import tw from '../../tailwind';
 
 type Song = {
@@ -90,13 +90,13 @@ const SongList = () => {
     
     return (
       <View style={[
-        tw`flex-row items-center mb-3 rounded-xl ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
+        tw`flex-row items-center mb-3 mx-4 rounded-xl ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
         getCardStyle()
       ]}>
         <TouchableWithoutFeedback onPress={() => handleSelect(item, index)}>
           <View style={tw`flex-1 p-4`}>
             <View style={tw`flex-row items-center`}>
-              <Text style={tw`text-lg font-nokia-bold text-2xl ml-3 text-accent-6 min-w-[35px]`}>
+              <Text style={tw`text-lg font-nokia-bold text-2xl ml text-accent-6 min-w-[35px]`}>
                 {songNumber}
               </Text>
               <Text style={tw`text-base font-nokia-bold flex-1 text-2xl ml-3 leading-6 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`} numberOfLines={2}>
@@ -109,73 +109,77 @@ const SongList = () => {
     );
   };
 
-  const headerPaddingTop = getHeaderPaddingTop();
-
   return (
     <View style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}>
-      <View style={[
-        tw`flex-row items-center justify-between p-5 pb-4`,
-        { paddingTop: headerPaddingTop }
-      ]}>
-        <View style={tw`flex-row items-center flex-1`}>
-          <BookOpenIcon size={28} color="#EA9215" />
-          <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
-            Hymnal Songs
-          </Text>
-        </View>
-        <TouchableWithoutFeedback onPress={handleToggleSearch}>
-          <View style={tw`p-2`}>
-            {isSearchVisible ? (
-              <XMarkIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
-            ) : (
-              <MagnifyingGlassIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
-            )}
+      <SafeAreaView style={tw`flex-1`}>
+        <View style={tw`flex-row items-center justify-between px-5 pb-4`}>
+          <View style={tw`flex-row items-center flex-1`}>
+            <BookOpenIcon size={28} color="#EA9215" />
+            <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
+              Hymnal Songs
+            </Text>
           </View>
-        </TouchableWithoutFeedback>
-      </View>
-
-      {isSearchVisible && (
-        <View style={tw`px-5 pb-4`}>
-          <TextInput
-            style={[
-              tw`h-12 rounded-lg px-4 border-2 font-nokia-bold ${isDarkMode ? 'bg-dark-primary-8 border-dark-primary-6 text-dark-secondary-1' : 'bg-primary-3 border-primary-6 text-secondary-10'}`,
-              getCardStyle()
-            ]}
-            placeholder="Search titles or lyrics..."
-            placeholderTextColor={isDarkMode ? '#9CA3AF' : '#6B7280'}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoFocus
-          />
-        </View>
-      )}
-
-      <FlatList
-        data={filteredSongs}
-        keyExtractor={(item, index) => index.toString()}
-        renderItem={renderSongItem}
-        showsVerticalScrollIndicator={false}
-        scrollEnabled={true}
-        bounces={true}
-        removeClippedSubviews={true}
-        contentContainerStyle={tw`pb-24`}
-        keyboardShouldPersistTaps="handled"
-        ListEmptyComponent={
-          searchQuery ? (
-            <View style={tw`p-8 items-center`}>
-              <Text style={tw`text-lg font-nokia-bold text-center ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`}>
-                No songs found for "{searchQuery}"
-              </Text>
+          <TouchableWithoutFeedback onPress={handleToggleSearch}>
+            <View style={tw`p-2`}>
+              {isSearchVisible ? (
+                <XMarkIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
+              ) : (
+                <MagnifyingGlassIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
+              )}
             </View>
-          ) : null
-        }
-      />
+          </TouchableWithoutFeedback>
+        </View>
+
+        {isSearchVisible && (
+          <View style={tw`px-5 pb-4`}>
+            <TextInput
+              style={[
+                tw`h-12 rounded-full px-4 border-2 font-nokia-bold ${isDarkMode ? 'bg-dark-primary-8 border-dark-primary-6 text-dark-secondary-1' : 'bg-primary-3 border-primary-6 text-secondary-10'}`,
+                getCardStyle()
+              ]}
+              placeholder="Search titles or lyrics..."
+              placeholderTextColor={isDarkMode ? '#9CA3AF' : '#6B7280'}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus
+            />
+          </View>
+        )}
+
+        <FlatList
+          data={filteredSongs}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={renderSongItem}
+          showsVerticalScrollIndicator={false}
+          scrollEnabled={true}
+          bounces={true}
+          removeClippedSubviews={true}
+          contentContainerStyle={tw`pb-28`}
+          keyboardShouldPersistTaps="handled"
+          ListEmptyComponent={
+            searchQuery ? (
+              <View style={tw`p-8 items-center`}>
+                <Text style={tw`text-lg font-nokia-bold text-center ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`}>
+                  No songs found for "{searchQuery}"
+                </Text>
+              </View>
+            ) : null
+          }
+        />
+      </SafeAreaView>
 
       {/* Floating Numpad Button */}
       <TouchableWithoutFeedback onPress={handleOpenNumpad}>
         <View style={[
-          tw`absolute bottom-28 right-5 bg-accent-6 rounded-full p-4`,
-          getCardStyle()
+          tw`absolute bottom-24 right-5 bg-accent-6 rounded-full p-4 shadow-lg`,
+          getCardStyle(),
+          {
+            elevation: 8,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 4,
+          }
         ]}>
           <HashtagIcon size={24} color="#FDFDFD" />
         </View>
