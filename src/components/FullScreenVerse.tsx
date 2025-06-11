@@ -15,9 +15,15 @@ import { ArrowsPointingInIcon, ChevronLeftIcon, ChevronRightIcon } from 'react-n
 import { RootState } from '../store';
 import tw from '../../tailwind';
 import Orientation from 'react-native-orientation-locker';
+import { useNavigation } from '@react-navigation/native';
 
 interface FullScreenVerseProps {
-  song: any;
+  song: {
+    title: string;
+    lyrics: string;
+    singer?: string;
+    verse?: string;
+  };
   isVisible: boolean;
   onClose: () => void;
 }
@@ -31,6 +37,7 @@ interface LyricSection {
 const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onClose }) => {
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
   const fontSize = useSelector((state: RootState) => state.fontSize.fontSize);
+  const navigation = useNavigation();
   const [currentSection, setCurrentSection] = useState(0);
   const [lyricSections, setLyricSections] = useState<LyricSection[]>([]);
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
@@ -106,15 +113,30 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
         return true;
       });
       
+      // Hide bottom navigation bar
+      navigation.setOptions({
+        tabBarStyle: { display: 'none' },
+        tabBarVisible: false
+      });
+      
       return () => {
         subscription?.remove();
         backHandler.remove();
+        Orientation.unlockAllOrientations();
+        navigation.setOptions({
+          tabBarStyle: { display: 'flex' },
+          tabBarVisible: true
+        });
       };
     } else {
       // Unlock orientation when not visible
       Orientation.unlockAllOrientations();
+      navigation.setOptions({
+        tabBarStyle: { display: 'flex' },
+        tabBarVisible: true
+      });
     }
-  }, [isVisible, song, handleClose]);
+  }, [isVisible, song, handleClose, navigation]);
 
   const goToNext = () => {
     if (currentSection < lyricSections.length - 1) {
