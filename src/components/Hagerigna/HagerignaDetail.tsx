@@ -4,9 +4,10 @@ import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { RootStackParamList } from '../../../App';
-import { ArrowLeftIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon, AdjustmentsHorizontalIcon, HashtagIcon } from 'react-native-heroicons/outline';
+import { ArrowLeftIcon, ArrowsPointingOutIcon, AdjustmentsHorizontalIcon, HashtagIcon } from 'react-native-heroicons/outline';
 import FontSizePopup from './../CustomBottomSheet';
 import NumpadModal from './../NumpadModal';
+import FullScreenVerse from './../FullScreenVerse';
 import { getCardStyle } from '../../utils/platformUtils';
 import tw from '../../../tailwind';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -128,60 +129,6 @@ const HagerignaDetail = () => {
     header: tw`flex-row justify-between items-center p-5 border-b font-nokia-bold ${isDarkMode ? 'border-dark-primary-8' : 'border-primary-6'}`
   };
 
-  if (isFullScreen) {
-    return (
-      <GestureDetector gesture={panGesture}>
-        <View style={dynamicStyles.container}>
-          <SafeAreaView style={tw`flex-1`}>
-            <View style={tw`flex-row justify-between items-center absolute top-4 left-5 right-5 z-10`}>
-              <TouchableWithoutFeedback onPress={toggleFullScreen}>
-                <View style={tw`p-2`}>
-                  <ArrowsPointingInIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
-                </View>
-              </TouchableWithoutFeedback>
-              <TouchableWithoutFeedback onPress={handleOpenPopup}>
-                <View style={tw`p-2`}>
-                  <AdjustmentsHorizontalIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
-                </View>
-              </TouchableWithoutFeedback>
-            </View>
-            <ScrollView 
-              showsVerticalScrollIndicator={false}
-              scrollEnabled={true}
-              bounces={true}
-            >
-              <View style={tw`p-5 pt-16`}>
-                <Text style={[dynamicStyles.title, tw`text-center mb-2 font-nokia-bold`]}>
-                  {songNumber}. {song.title}
-                </Text>
-                {song.singer && (
-                  <Text style={[dynamicStyles.singer, tw`text-center mb-8 font-nokia-bold`]}>
-                    {song.singer}
-                  </Text>
-                )}
-                <View style={tw`px-2`}>
-                  {song.lyrics.split('\\n').map((line, index) => (
-                    <Text key={index} style={[dynamicStyles.lyrics, tw`text-center mb-3 font-nokia-bold`, { lineHeight: 32 }]}>
-                      {line}
-                    </Text>
-                  ))}
-                </View>
-              </View>
-            </ScrollView>
-          </SafeAreaView>
-          <FontSizePopup visible={isPopupVisible} onClose={handleClosePopup} />
-          <NumpadModal 
-            visible={isNumpadVisible}
-            onClose={handleCloseNumpad}
-            onJumpToSong={handleJumpToSong}
-            maxSongs={totalSongs}
-            title="Hagerigna"
-          />
-        </View>
-      </GestureDetector>
-    );
-  }
-
   return (
     <GestureDetector gesture={panGesture}>
       <View style={dynamicStyles.container}>
@@ -252,6 +199,13 @@ const HagerignaDetail = () => {
           onJumpToSong={handleJumpToSong}
           maxSongs={totalSongs}
           title="Hagerigna"
+        />
+
+        {/* FullScreenVerse Component */}
+        <FullScreenVerse
+          song={song}
+          isVisible={isFullScreen}
+          onClose={toggleFullScreen}
         />
       </View>
     </GestureDetector>
