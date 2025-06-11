@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableWithoutFeedback, ScrollView, SafeAreaView } from 'react-native';
+import { View, Text, TouchableWithoutFeedback, ScrollView, Platform } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { RootState } from '../store';
 import { RootStackParamList } from '../../App';
 import { ArrowLeftIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon, AdjustmentsHorizontalIcon, HashtagIcon } from 'react-native-heroicons/outline';
@@ -127,7 +128,7 @@ const SongDetail = () => {
     return (
       <GestureDetector gesture={panGesture}>
         <View style={dynamicStyles.container}>
-          <SafeAreaView style={tw`flex-1`}>
+          <SafeAreaView style={tw`flex-1`} edges={['top']}>
             <View style={tw`flex-row justify-between items-center absolute top-4 left-5 right-5 z-10`}>
               <TouchableWithoutFeedback onPress={toggleFullScreen}>
                 <View style={tw`p-2`}>
@@ -144,6 +145,10 @@ const SongDetail = () => {
               showsVerticalScrollIndicator={false}
               scrollEnabled={true}
               bounces={true}
+              contentContainerStyle={Platform.select({
+                ios: { paddingBottom: 20 },
+                android: { paddingBottom: 20 }
+              })}
             >
               <View style={tw`p-5 pt-16`}>
                 <Text style={[dynamicStyles.title, tw`text-center mb-8 font-nokia-bold`]}>
@@ -175,8 +180,8 @@ const SongDetail = () => {
   return (
     <GestureDetector gesture={panGesture}>
       <View style={dynamicStyles.container}>
-        <SafeAreaView style={tw`flex-1`}>
-          <View style={dynamicStyles.header}>
+        <SafeAreaView style={tw`flex-1`} edges={['top']}>
+          <View style={[dynamicStyles.header, tw`pt-4`]}>
             <TouchableWithoutFeedback onPress={handleBackPress}>
               <View style={tw`p-2`}>
                 <ArrowLeftIcon size={24} color="#EA9215" />
@@ -207,20 +212,41 @@ const SongDetail = () => {
             showsVerticalScrollIndicator={false}
             scrollEnabled={true}
             bounces={true}
+            contentContainerStyle={Platform.select({
+              ios: { 
+                padding: 20, 
+                paddingBottom: 120 
+              },
+              android: { 
+                padding: 20, 
+                paddingBottom: 120 
+              }
+            })}
           >
-            <View style={tw`p-5`}>
-              {song.lyrics.split('\\n').map((line, index) => (
-                <Text key={index} style={dynamicStyles.lyrics}>
-                  {line}
-                </Text>
-              ))}
-            </View>
+            {song.lyrics.split('\\n').map((line, index) => (
+              <Text key={index} style={dynamicStyles.lyrics}>
+                {line}
+              </Text>
+            ))}
           </ScrollView>
 
           {/* Floating Numpad Button */}
           <TouchableWithoutFeedback onPress={handleOpenNumpad}>
             <View style={[
-              tw`absolute bottom-24 right-5 bg-accent-6 rounded-full p-4`,
+              tw`absolute right-5 bg-accent-6 rounded-full p-4 shadow-lg`,
+              Platform.select({
+                ios: {
+                  bottom: 100,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 4,
+                },
+                android: {
+                  bottom: 100,
+                  elevation: 8,
+                }
+              }),
               getCardStyle()
             ]}>
               <HashtagIcon size={24} color="#FDFDFD" />

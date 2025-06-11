@@ -12,7 +12,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider, useSelector } from 'react-redux';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StatusBar } from 'react-native';
+import { StatusBar, Platform } from 'react-native';
 import store, { RootState } from './src/store';
 import SongList from './src/components/SongList';
 import SongDetail from './src/components/SongDetail';
@@ -82,8 +82,11 @@ const TabNavigator = () => {
     <>
       <StatusBar 
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={isDarkMode ? '#1A2024' : '#FDFDFD'}
-        translucent={false}
+        backgroundColor={Platform.select({
+          android: isDarkMode ? '#1A2024' : '#FDFDFD',
+          ios: 'transparent'
+        })}
+        translucent={Platform.OS === 'android'}
       />
       <Tab.Navigator 
         screenOptions={({ route }) => ({
@@ -105,16 +108,27 @@ const TabNavigator = () => {
           },
           tabBarActiveTintColor: '#EA9215',
           tabBarInactiveTintColor: isDarkMode ? '#9CA3AF' : '#6B7280',
-          tabBarStyle: {
-            backgroundColor: isDarkMode ? '#1A2024' : '#FDFDFD',
-            borderTopColor: isDarkMode ? '#374151' : '#E5E7EB',
-            position: 'absolute',
-            height: 85,
-            paddingBottom: 20,
-            paddingTop: 10,
-            elevation: 0,
-            shadowOpacity: 0,
-          },
+          tabBarStyle: Platform.select({
+            ios: {
+              backgroundColor: isDarkMode ? '#1A2024' : '#FDFDFD',
+              borderTopColor: isDarkMode ? '#374151' : '#E5E7EB',
+              position: 'absolute',
+              height: 85,
+              paddingBottom: 20,
+              paddingTop: 10,
+              elevation: 0,
+              shadowOpacity: 0,
+            },
+            android: {
+              backgroundColor: isDarkMode ? '#1A2024' : '#FDFDFD',
+              borderTopColor: isDarkMode ? '#374151' : '#E5E7EB',
+              position: 'absolute',
+              height: 85,
+              paddingBottom: 20,
+              paddingTop: 10,
+              elevation: 0,
+            }
+          }),
           tabBarLabelStyle: {
             fontFamily: 'Nokia-Bold',
             fontSize: 12,

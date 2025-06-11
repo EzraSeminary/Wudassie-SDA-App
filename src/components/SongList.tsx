@@ -1,8 +1,9 @@
 import React, {useEffect, useState} from 'react';
-import {FlatList, Text, View, TextInput, TouchableWithoutFeedback, SafeAreaView} from 'react-native';
+import {FlatList, Text, View, TextInput, TouchableWithoutFeedback, Platform} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useSelector} from 'react-redux';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import {RootState} from '../store';
 import {RootStackParamList} from '../../App';
 import hymnalData from './SDA_Hymnal.json';
@@ -111,8 +112,8 @@ const SongList = () => {
 
   return (
     <View style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}>
-      <SafeAreaView style={tw`flex-1`}>
-        <View style={tw`flex-row items-center justify-between px-5 pb-4`}>
+      <SafeAreaView style={tw`flex-1`} edges={['top']}>
+        <View style={tw`flex-row items-center justify-between px-5 pb-4 pt-4`}>
           <View style={tw`flex-row items-center flex-1`}>
             <BookOpenIcon size={28} color="#EA9215" />
             <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
@@ -154,7 +155,10 @@ const SongList = () => {
           scrollEnabled={true}
           bounces={true}
           removeClippedSubviews={true}
-          contentContainerStyle={tw`pb-28`}
+          contentContainerStyle={Platform.select({
+            ios: tw`pb-28`,
+            android: tw`pb-32`
+          })}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
             searchQuery ? (
@@ -171,15 +175,21 @@ const SongList = () => {
       {/* Floating Numpad Button */}
       <TouchableWithoutFeedback onPress={handleOpenNumpad}>
         <View style={[
-          tw`absolute bottom-24 right-5 bg-accent-6 rounded-full p-4 shadow-lg`,
-          getCardStyle(),
-          {
-            elevation: 8,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 4,
-          }
+          tw`absolute right-5 bg-accent-6 rounded-full p-4 shadow-lg`,
+          Platform.select({
+            ios: {
+              bottom: 100,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 4,
+            },
+            android: {
+              bottom: 100,
+              elevation: 8,
+            }
+          }),
+          getCardStyle()
         ]}>
           <HashtagIcon size={24} color="#FDFDFD" />
         </View>
