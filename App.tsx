@@ -5,7 +5,7 @@
  * @format
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -21,17 +21,17 @@ import HagerignaDetail from './src/components/Hagerigna/HagerignaDetail';
 import Settings from './src/components/Settings/Settings';
 import MusicPlayer from './src/components/YoutubeLink/YouTubeLinks';
 import { BookOpenIcon, MusicalNoteIcon, PlayIcon, Cog6ToothIcon} from 'react-native-heroicons/outline';
+import { syncService } from './src/services/syncService';
+import NetInfo from '@react-native-community/netinfo';
+import { HagerignaHymn } from './src/services/hymnalService';
 
 export type RootStackParamList = {
   SongDetail: { song: { title: string; lyrics: string; }, songNumber: number };
   SongList: undefined;
   HagerignaList: undefined;
   HagerignaDetail: {
-    song: {
-      title: string;
-      lyrics: string;
-      singer: string;
-    }, songNumber: number
+    song: HagerignaHymn;
+    songNumber: number;
   };
 };
 
@@ -144,7 +144,23 @@ const TabNavigator = () => {
   );
 };
 
-function App(): React.JSX.Element {
+const App = () => {
+  useEffect(() => {
+    // Check for updates when app starts
+    syncService.checkForUpdates();
+
+    // Set up network listener
+    const unsubscribe = NetInfo.addEventListener(state => {
+      if (state.isConnected) {
+        syncService.checkForUpdates();
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
   return (
     <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
@@ -156,6 +172,6 @@ function App(): React.JSX.Element {
       </GestureHandlerRootView>
     </SafeAreaProvider>
   );
-}
+};
 
 export default App;

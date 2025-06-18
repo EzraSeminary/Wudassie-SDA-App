@@ -1,19 +1,34 @@
-import React from 'react';
-import { View, Text, Switch, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Switch, ScrollView, SafeAreaView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, setFontSize, toggleDarkMode } from '../../store';
-import { Cog6ToothIcon, MusicalNoteIcon, BookOpenIcon, HeartIcon } from 'react-native-heroicons/outline';
+import { Cog6ToothIcon, MusicalNoteIcon, BookOpenIcon, HeartIcon, ArrowPathIcon } from 'react-native-heroicons/outline';
 import { getCardStyle } from '../../utils/platformUtils';
+import { hymnalService } from '../../services/hymnalService';
 import tw from '../../../tailwind';
 
 const Settings = () => {
   const fontSize = useSelector((state: RootState) => state.fontSize.fontSize);
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
   const dispatch = useDispatch();
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const handleToggleTheme = () => {
     dispatch(toggleDarkMode());
+  };
+
+  const handleUpdateSongs = async () => {
+    try {
+      setIsUpdating(true);
+      await hymnalService.forceUpdate();
+      Alert.alert('Success', 'Songs updated successfully!');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update songs. Please try again later.');
+      console.error('Update error:', error);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   return (
@@ -79,6 +94,35 @@ const Settings = () => {
                   thumbColor={isDarkMode ? '#FDFDFD' : '#FDFDFD'}
                 />
               </View>
+            </View>
+
+            {/* Update Songs Section */}
+            <View style={[
+              tw`p-5 mb-5 rounded-xl ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
+              getCardStyle()
+            ]}>
+              <Text style={tw`text-xl font-nokia-bold mb-3 text-accent-6`}>Update Songs</Text>
+              <Text style={tw`text-sm mb-4 opacity-70 ${isDarkMode ? 'text-dark-secondary-2' : 'text-secondary-9'}`}>
+                Get the latest songs from the server
+              </Text>
+              <TouchableOpacity
+                onPress={handleUpdateSongs}
+                disabled={isUpdating}
+                style={[
+                  tw`flex-row items-center justify-center p-4 rounded-lg`,
+                  tw`${isUpdating ? 'bg-gray-400' : 'bg-accent-6'}`,
+                  getCardStyle()
+                ]}
+              >
+                {isUpdating ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
+                  <ArrowPathIcon size={20} color="white" />
+                )}
+                <Text style={tw`text-white font-nokia-bold ml-2`}>
+                  {isUpdating ? 'Updating...' : 'Update Now'}
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* About Section */}

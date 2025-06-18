@@ -10,18 +10,13 @@ import { MusicalNoteIcon, HashtagIcon, MagnifyingGlassIcon, XMarkIcon } from 're
 import NumpadModal from './../NumpadModal';
 import { getCardStyle } from '../../utils/platformUtils';
 import tw from '../../../tailwind';
-
-type Song = {
-  title: string;
-  lyrics: string;
-  singer: string;
-};
+import { hymnalService, HagerignaHymn } from '../../services/hymnalService';
 
 type SongListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'HagerignaList'>;
 
 const HagerignaList = () => {
-  const [songs, setSongs] = useState<Song[]>([]);
-  const [filteredSongs, setFilteredSongs] = useState<Song[]>([]);
+  const [songs, setSongs] = useState<HagerignaHymn[]>([]);
+  const [filteredSongs, setFilteredSongs] = useState<HagerignaHymn[]>([]);
   const [isNumpadVisible, setNumpadVisible] = useState(false);
   const [isSearchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -39,27 +34,47 @@ const HagerignaList = () => {
   };
 
   useEffect(() => {
-    const loadFile = () => {
+    const parseLocalJson = (): HagerignaHymn[] => {
       try {
-        const newTitles = hymnalData.resources.array[2].item; // Titles array
-        const newSinger = hymnalData.resources.array[0].item; // Singer array
-        const newSongs = hymnalData.resources.array[1].item; // Lyrics array
-
-        const combinedSongs = newTitles.map((title: string, index: number) => ({
+        const newTitles = hymnalData.resources.array[2].item;
+        const newArtist = hymnalData.resources.array[0].item;
+        const newSongs = hymnalData.resources.array[1].item;
+        return newTitles.map((title: string, index: number) => ({
+          id: `hagerigna-${index}`,
           title,
-          lyrics: newSongs[index],
-          singer: newSinger[index],
+          song: newSongs[index],
+          artist: newArtist[index],
         }));
-
-        setSongs(combinedSongs);
-        setFilteredSongs(combinedSongs);
-        console.log('Parsed JSON successfully');
       } catch (err) {
         console.error('Error reading JSON file:', err);
+        return [];
       }
     };
 
-    loadFile();
+    const loadData = async () => {
+      // 1. Try to load from cache (AsyncStorage) for a fast start
+      const cachedSongs = await hymnalService.getLocalHagerignaHymns();
+      if (cachedSongs && cachedSongs.length > 0) {
+        setSongs(cachedSongs);
+        setFilteredSongs(cachedSongs);
+      } else {
+        // 2. If no cache, load from bundled JSON immediately
+        const localSongs = parseLocalJson();
+        setSongs(localSongs);
+        setFilteredSongs(localSongs);
+      }
+
+      // 3. Fetch from API in the background to get latest updates
+      try {
+        const apiSongs = await hymnalService.getHagerignaHymns();
+        setSongs(apiSongs);
+        setFilteredSongs(apiSongs);
+      } catch (error) {
+        console.error('Failed to fetch API updates, using cached/local data.', error);
+      }
+    };
+
+    loadData();
   }, []);
 
   useEffect(() => {
@@ -68,23 +83,24 @@ const HagerignaList = () => {
     } else {
       const filtered = songs.filter((song, _index) =>
         song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        song.singer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        song.lyrics.toLowerCase().includes(searchQuery.toLowerCase())
+        (song.artist || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        song.song.toLowerCase().includes(searchQuery.toLowerCase())
       );
       setFilteredSongs(filtered);
     }
   }, [searchQuery, songs]);
 
-  const handleSelect = (song: Song, _index: number) => {
-    // Find the original index in the full songs array
-    const originalIndex = songs.findIndex(s => s.title === song.title && s.lyrics === song.lyrics && s.singer === song.singer);
-    navigation.navigate('HagerignaDetail', {song, songNumber: originalIndex + 1});
+  const handleSelect = (song: HagerignaHymn, _index: number) => {
+    const songNumber = songs.findIndex(s => s.id === song.id) + 1;
+    navigation.navigate('HagerignaDetail', { song: { ...song, artist: song.artist || '' }, songNumber });
   };
 
   const handleJumpToSong = (songNumber: number) => {
     const songIndex = songNumber - 1;
     const song = songs[songIndex];
-    navigation.navigate('HagerignaDetail', {song, songNumber});
+    if (song) {
+      navigation.navigate('HagerignaDetail', { song: { ...song, artist: song.artist || '' }, songNumber });
+    }
   };
 
 
@@ -96,12 +112,12 @@ const HagerignaList = () => {
     ],
     songNumber: tw`text-2xl font-nokia-bold mr-4 text-accent-6 min-w-[35px]`,
     songTitle: tw`text-2xl font-nokia-bold leading-6 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
-    singerName: tw`font-nokia-bold ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`
+    artistName: tw`font-nokia-bold ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`
   };
 
-  const renderSongItem = ({item, index}: {item: Song; index: number}) => {
+  const renderSongItem = ({item, index}: {item: HagerignaHymn; index: number}) => {
     // Find the original song number
-    const originalIndex = songs.findIndex(s => s.title === item.title && s.lyrics === item.lyrics && s.singer === item.singer);
+    const originalIndex = songs.findIndex(s => s.id === item.id);
     const songNumber = originalIndex + 1;
     
     return (
@@ -116,8 +132,8 @@ const HagerignaList = () => {
                 <Text style={[dynamicStyles.songTitle, tw`font-nokia-bold`]} numberOfLines={2}>
                   {item.title}
                 </Text>
-                <Text style={[dynamicStyles.singerName, tw`mt-1 font-nokia-bold`]} numberOfLines={1}>
-                  {item.singer}
+                <Text style={[dynamicStyles.artistName, tw`mt-1 font-nokia-bold`]} numberOfLines={1}>
+                  {item.artist || ''}
                 </Text>
               </View>
             </View>
@@ -131,7 +147,7 @@ const HagerignaList = () => {
   return (
     <View style={dynamicStyles.container}>
       <SafeAreaView style={tw`flex-1`}>
-        <View style={tw`flex-row items-center justify-between p-5 pb-4`}>
+        <View style={tw`flex-row items-center justify-between p-5 pb-4 pt-4`}>
           <View style={tw`flex-row items-center flex-1`}>
             <MusicalNoteIcon size={28} color="#EA9215" />
             <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
@@ -156,7 +172,7 @@ const HagerignaList = () => {
                 tw`h-12 rounded-lg px-4 border-2 font-nokia-bold ${isDarkMode ? 'bg-dark-primary-8 border-dark-primary-6 text-dark-secondary-1' : 'bg-primary-3 border-primary-6 text-secondary-10'}`,
                 getCardStyle()
               ]}
-              placeholder="Search titles, singers, or lyrics..."
+              placeholder="Search titles, artists, or lyrics..."
               placeholderTextColor={isDarkMode ? '#9CA3AF' : '#6B7280'}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -173,7 +189,7 @@ const HagerignaList = () => {
           scrollEnabled={true}
           bounces={true}
           removeClippedSubviews={true}
-          contentContainerStyle={tw`pb-6`}
+          contentContainerStyle={tw`pb-24`}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
             searchQuery ? (
