@@ -140,7 +140,7 @@ const HagerignaDetail = () => {
             
             <View style={tw`flex-row items-center flex-1 mx-3`}>
               <View style={tw`flex-1`}>
-                <Text style={[dynamicStyles.title, tw`font-nokia-bold`]} numberOfLines={2}>
+                <Text style={[ tw`font-nokia-bold text-3xl ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`]} numberOfLines={2}>
                   {songNumber}. {song.title}
                 </Text>
                 {song.artist && (
@@ -181,7 +181,7 @@ const HagerignaDetail = () => {
 
           <TouchableWithoutFeedback onPress={handleOpenNumpad}>
             <View style={[
-              tw`absolute bottom-24 right-5 bg-accent-6 rounded-full p-4`,
+              tw`absolute bottom-10 right-5 bg-accent-6 rounded-full p-4`,
               getCardStyle()
             ]}>
               <HashtagIcon size={24} color="#FDFDFD" />

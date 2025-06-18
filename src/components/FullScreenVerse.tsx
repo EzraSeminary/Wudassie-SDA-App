@@ -42,6 +42,22 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
   const [lyricSections, setLyricSections] = useState<LyricSection[]>([]);
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
 
+  // This effect handles showing/hiding the tab bar and status bar
+  useEffect(() => {
+    const parentNav = navigation.getParent();
+    if (isVisible) {
+      // Hide the tab bar
+      parentNav?.setOptions({
+        tabBarStyle: { display: 'none' },
+      });
+    } else {
+      // Restore the tab bar
+      parentNav?.setOptions({
+        tabBarStyle: { display: 'flex' },
+      });
+    }
+  }, [isVisible, navigation]);
+
   // Parse lyrics into sections
   const parseLyrics = (lyrics: string): LyricSection[] => {
     if (!lyrics) return [];
@@ -113,30 +129,16 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
         return true;
       });
       
-      // Hide bottom navigation bar
-      navigation.setOptions({
-        tabBarStyle: { display: 'none' },
-        tabBarVisible: false
-      });
-      
       return () => {
         subscription?.remove();
         backHandler.remove();
         Orientation.unlockAllOrientations();
-        navigation.setOptions({
-          tabBarStyle: { display: 'flex' },
-          tabBarVisible: true
-        });
       };
     } else {
       // Unlock orientation when not visible
       Orientation.unlockAllOrientations();
-      navigation.setOptions({
-        tabBarStyle: { display: 'flex' },
-        tabBarVisible: true
-      });
     }
-  }, [isVisible, song, handleClose, navigation]);
+  }, [isVisible, song, handleClose]);
 
   const goToNext = () => {
     if (currentSection < lyricSections.length - 1) {
@@ -150,7 +152,17 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
     }
   };
 
-  if (!isVisible || lyricSections.length === 0) {
+  if (!isVisible) {
+    return null;
+  }
+
+  if (lyricSections.length === 0 && song) {
+    const sections = parseLyrics(song.lyrics || song.verse || '');
+    setLyricSections(sections);
+    setCurrentSection(0);
+  }
+
+  if (!lyricSections.length) {
     return null;
   }
 
@@ -159,11 +171,7 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
 
   return (
     <View style={tw`absolute inset-0 z-50`}>
-      <StatusBar 
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
-        backgroundColor={isDarkMode ? '#1A2024' : '#FDFDFD'}
-        translucent={false}
-      />
+      <StatusBar hidden />
       <SafeAreaView 
         style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}
         edges={['left', 'right']}

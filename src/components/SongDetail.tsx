@@ -158,7 +158,7 @@ const SongDetail = () => {
             tw`absolute right-5 bg-accent-6 rounded-full p-4 shadow-lg`,
             Platform.select({
               ios: {
-                bottom: 100,
+                bottom: 40,
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.3,
