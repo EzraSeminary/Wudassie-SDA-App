@@ -1,22 +1,42 @@
 import React, {useEffect, useState} from 'react';
-import {FlatList, Text, TouchableOpacity, View, StyleSheet} from 'react-native';
+import {FlatList, Text, View, TextInput, TouchableWithoutFeedback, Platform} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {useSelector} from 'react-redux';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {RootState} from '../store';
 import {RootStackParamList} from '../../App';
 import hymnalData from './SDA_Hymnal.json';
-import tw from './../../tailwind';
+import { BookOpenIcon, HashtagIcon, MagnifyingGlassIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import NumpadModal from './NumpadModal';
+import { getCardStyle } from '../utils/platformUtils';
+import tw from '../../tailwind';
 
 type Song = {
   title: string;
   lyrics: string;
 };
 
-
 type SongListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SongList'>;
 
 const SongList = () => {
   const [songs, setSongs] = useState<Song[]>([]);
+  const [filteredSongs, setFilteredSongs] = useState<Song[]>([]);
+  const [isNumpadVisible, setNumpadVisible] = useState(false);
+  const [isSearchVisible, setSearchVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const navigation = useNavigation<SongListNavigationProp>();
+  const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
+
+  const handleOpenNumpad = () => setNumpadVisible(true);
+  const handleCloseNumpad = () => setNumpadVisible(false);
+  const handleToggleSearch = () => {
+    setSearchVisible(!isSearchVisible);
+    if (isSearchVisible) {
+      setSearchQuery('');
+      setFilteredSongs(songs);
+    }
+  };
 
   useEffect(() => {
     const loadFile = () => {
@@ -30,6 +50,7 @@ const SongList = () => {
         }));
 
         setSongs(combinedSongs);
+        setFilteredSongs(combinedSongs);
         console.log('Parsed JSON successfully');
       } catch (err) {
         console.error('Error reading JSON file:', err);
@@ -39,35 +60,150 @@ const SongList = () => {
     loadFile();
   }, []);
 
-  const handleSelect = (song: Song, index: number) => {
-    navigation.navigate('SongDetail', {song, songNumber: index + 1});
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredSongs(songs);
+    } else {
+      const filtered = songs.filter((song, _index) =>
+        song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        song.lyrics.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredSongs(filtered);
+    }
+  }, [searchQuery, songs]);
+
+  const handleSelect = (song: Song, _index: number) => {
+    // Find the original index in the full songs array
+    const originalIndex = songs.findIndex(s => s.title === song.title && s.lyrics === song.lyrics);
+    navigation.navigate('SongDetail', {song, songNumber: originalIndex + 1});
+  };
+
+  const handleJumpToSong = (songNumber: number) => {
+    const songIndex = songNumber - 1;
+    const song = songs[songIndex];
+    navigation.navigate('SongDetail', {song, songNumber});
+  };
+
+  const renderSongItem = ({item, index}: {item: Song; index: number}) => {
+    // Find the original song number
+    const originalIndex = songs.findIndex(s => s.title === item.title && s.lyrics === item.lyrics);
+    const songNumber = originalIndex + 1;
+    
+    return (
+      <View style={[
+        tw`flex-row items-center mb-3 mx-4 rounded-xl ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
+        getCardStyle()
+      ]}>
+        <TouchableWithoutFeedback onPress={() => handleSelect(item, index)}>
+          <View style={tw`flex-1 p-4`}>
+            <View style={tw`flex-row items-center`}>
+              <Text style={tw`text-lg font-nokia-bold text-2xl ml text-accent-6 min-w-[35px]`}>
+                {songNumber}
+              </Text>
+              <Text style={tw`text-base font-nokia-bold flex-1 text-2xl ml-3 leading-6 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`} numberOfLines={2}>
+                {item.title}
+              </Text>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </View>
+    );
   };
 
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={songs}
-        keyExtractor={item => item.title}
-        renderItem={({item, index}) => (
-          <TouchableOpacity onPress={() => handleSelect(item, index)}>
-            <Text style={tw` text-2xl font-nokia-bold border-b border-accent-7 p-4`}>
-              {index + 1} - {item.title}
+    <View style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}>
+      <SafeAreaView style={tw`flex-1`} edges={['top']}>
+        <View style={tw`flex-row items-center justify-between px-5 pb-4 pt-4`}>
+          <View style={tw`flex-row items-center flex-1`}>
+            <BookOpenIcon size={28} color="#EA9215" />
+            <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
+              Hymnal Songs
             </Text>
-          </TouchableOpacity>
+          </View>
+          <TouchableWithoutFeedback onPress={handleToggleSearch}>
+            <View style={tw`p-2`}>
+              {isSearchVisible ? (
+                <XMarkIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
+              ) : (
+                <MagnifyingGlassIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
+              )}
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+
+        {isSearchVisible && (
+          <View style={tw`px-5 pb-4`}>
+            <TextInput
+              style={[
+                tw`h-12 rounded-full px-4 border-2 font-nokia-bold ${isDarkMode ? 'bg-dark-primary-8 border-dark-primary-6 text-dark-secondary-1' : 'bg-primary-3 border-primary-6 text-secondary-10'}`,
+                getCardStyle()
+              ]}
+              placeholder="Search titles or lyrics..."
+              placeholderTextColor={isDarkMode ? '#9CA3AF' : '#6B7280'}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus
+            />
+          </View>
         )}
+
+        <FlatList
+          data={filteredSongs}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={renderSongItem}
+          showsVerticalScrollIndicator={false}
+          scrollEnabled={true}
+          bounces={true}
+          removeClippedSubviews={true}
+          contentContainerStyle={Platform.select({
+            ios: tw`pb-28`,
+            android: tw`pb-32`
+          })}
+          keyboardShouldPersistTaps="handled"
+          ListEmptyComponent={
+            searchQuery ? (
+              <View style={tw`p-8 items-center`}>
+                <Text style={tw`text-lg font-nokia-bold text-center ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`}>
+                  No songs found for "{searchQuery}"
+                </Text>
+              </View>
+            ) : null
+          }
+        />
+      </SafeAreaView>
+
+      {/* Floating Numpad Button */}
+      <TouchableWithoutFeedback onPress={handleOpenNumpad}>
+        <View style={[
+          tw`absolute right-5 bg-accent-6 rounded-full p-4 shadow-lg`,
+          Platform.select({
+            ios: {
+              bottom: 100,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 4,
+            },
+            android: {
+              bottom: 100,
+              elevation: 8,
+            }
+          }),
+          getCardStyle()
+        ]}>
+          <HashtagIcon size={24} color="#FDFDFD" />
+        </View>
+      </TouchableWithoutFeedback>
+
+      <NumpadModal 
+        visible={isNumpadVisible}
+        onClose={handleCloseNumpad}
+        onJumpToSong={handleJumpToSong}
+        maxSongs={songs.length}
+        title="Hymnal"
       />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 18,
-    padding: 10,
-  },
-});
 
 export default SongList;

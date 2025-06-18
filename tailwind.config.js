@@ -24,6 +24,8 @@ module.exports = {
       '5xl': ['40px', {lineHeight: '48px', letterSpacing: '0'}],
       '6xl': ['48px', {lineHeight: '56px', letterSpacing: '0'}],
       '7xl': ['56px', {lineHeight: '64px', letterSpacing: '-0.02'}],
+      'custom-title': ['24px', {lineHeight: '32px', letterSpacing: '0'}],
+      'custom-lyrics': ['18px', {lineHeight: '26px', letterSpacing: '0'}],
     },
     extend: {
       truncate: {

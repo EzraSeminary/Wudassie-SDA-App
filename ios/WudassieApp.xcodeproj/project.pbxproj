@@ -7,9 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		05E187ABD3FA4E99A7447C64 /* NokiaPureHeadline_Lt.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 46CF000382BE4B3185F889BE /* NokiaPureHeadline_Lt.ttf */; };
 		0C80B921A6F3F58F76C31292 /* libPods-WudassieApp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-WudassieApp.a */; };
+		1214372D653443D98600CA64 /* NOKIAPUREHEADLINE_RG.TTF in Resources */ = {isa = PBXBuildFile; fileRef = 7A5230DA04694A6A93087F4B /* NOKIAPUREHEADLINE_RG.TTF */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		22F531B1A1DE4E068D7C5804 /* Lato-Thin.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 5D4DC6F7FE0141808E77DE1F /* Lato-Thin.ttf */; };
+		25ACBD52958F4BFEAF61214E /* NokiaPureHeadline_XBd..ttf in Resources */ = {isa = PBXBuildFile; fileRef = A824AAA9EF4E4C198EF00C04 /* NokiaPureHeadline_XBd..ttf */; };
 		6F6D42F433F1572AFDBB1B3A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
@@ -19,9 +22,6 @@
 		CCF05CF0C5DA47C393141DDA /* Nokia Pure Headline Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 15206337C87D42628D7E2C0C /* Nokia Pure Headline Bold.ttf */; };
 		EA33F202B8AA4A24825C1920 /* Lato-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A2531821968349B8ABA6C4D2 /* Lato-Bold.ttf */; };
 		FA3BCE8DCF5A423CA6A0C859 /* Nokia Pure Headline Ultra Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AAB2F38DA2284E6C9BE43262 /* Nokia Pure Headline Ultra Light.ttf */; };
-		05E187ABD3FA4E99A7447C64 /* NokiaPureHeadline_Lt.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 46CF000382BE4B3185F889BE /* NokiaPureHeadline_Lt.ttf */; };
-		25ACBD52958F4BFEAF61214E /* NokiaPureHeadline_XBd..ttf in Resources */ = {isa = PBXBuildFile; fileRef = A824AAA9EF4E4C198EF00C04 /* NokiaPureHeadline_XBd..ttf */; };
-		1214372D653443D98600CA64 /* NOKIAPUREHEADLINE_RG.TTF in Resources */ = {isa = PBXBuildFile; fileRef = 7A5230DA04694A6A93087F4B /* NOKIAPUREHEADLINE_RG.TTF */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,19 +32,19 @@
 		15206337C87D42628D7E2C0C /* Nokia Pure Headline Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Nokia Pure Headline Bold.ttf"; path = "../assets/fonts/Nokia Pure Headline Bold.ttf"; sourceTree = "<group>"; };
 		17B44B9B84914F3C94FEFFE4 /* Lato-Black.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Lato-Black.ttf"; path = "../assets/fonts/Lato-Black.ttf"; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-WudassieApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-WudassieApp.debug.xcconfig"; path = "Target Support Files/Pods-WudassieApp/Pods-WudassieApp.debug.xcconfig"; sourceTree = "<group>"; };
+		46CF000382BE4B3185F889BE /* NokiaPureHeadline_Lt.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = NokiaPureHeadline_Lt.ttf; path = ../assets/fonts/NokiaPureHeadline_Lt.ttf; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-WudassieApp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-WudassieApp.release.xcconfig"; path = "Target Support Files/Pods-WudassieApp/Pods-WudassieApp.release.xcconfig"; sourceTree = "<group>"; };
 		5D4DC6F7FE0141808E77DE1F /* Lato-Thin.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Lato-Thin.ttf"; path = "../assets/fonts/Lato-Thin.ttf"; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-WudassieApp.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-WudassieApp.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = WudassieApp/AppDelegate.swift; sourceTree = "<group>"; };
+		7A5230DA04694A6A93087F4B /* NOKIAPUREHEADLINE_RG.TTF */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = NOKIAPUREHEADLINE_RG.TTF; path = ../assets/fonts/NOKIAPUREHEADLINE_RG.TTF; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = WudassieApp/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		9D6286B1414840C484D9698D /* Lato-Light.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Lato-Light.ttf"; path = "../assets/fonts/Lato-Light.ttf"; sourceTree = "<group>"; };
 		A2531821968349B8ABA6C4D2 /* Lato-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Lato-Bold.ttf"; path = "../assets/fonts/Lato-Bold.ttf"; sourceTree = "<group>"; };
+		A824AAA9EF4E4C198EF00C04 /* NokiaPureHeadline_XBd..ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = NokiaPureHeadline_XBd..ttf; path = ../assets/fonts/NokiaPureHeadline_XBd..ttf; sourceTree = "<group>"; };
 		AAB2F38DA2284E6C9BE43262 /* Nokia Pure Headline Ultra Light.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Nokia Pure Headline Ultra Light.ttf"; path = "../assets/fonts/Nokia Pure Headline Ultra Light.ttf"; sourceTree = "<group>"; };
 		C6BE43AC444E44F6B51A5C7A /* Lato-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Lato-Regular.ttf"; path = "../assets/fonts/Lato-Regular.ttf"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		46CF000382BE4B3185F889BE /* NokiaPureHeadline_Lt.ttf */ = {isa = PBXFileReference; name = "NokiaPureHeadline_Lt.ttf"; path = "../assets/fonts/NokiaPureHeadline_Lt.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		A824AAA9EF4E4C198EF00C04 /* NokiaPureHeadline_XBd..ttf */ = {isa = PBXFileReference; name = "NokiaPureHeadline_XBd..ttf"; path = "../assets/fonts/NokiaPureHeadline_XBd..ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		7A5230DA04694A6A93087F4B /* NOKIAPUREHEADLINE_RG.TTF */ = {isa = PBXFileReference; name = "NOKIAPUREHEADLINE_RG.TTF"; path = "../assets/fonts/NOKIAPUREHEADLINE_RG.TTF"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
