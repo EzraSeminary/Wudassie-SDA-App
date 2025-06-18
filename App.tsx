@@ -75,76 +75,61 @@ const HagerignaStack = () => (
 
 const Tab = createBottomTabNavigator();
 
-const TabNavigator = () => {
+const MainTabs = () => {
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
-  
+
+  const tabBarStyle = {
+    backgroundColor: isDarkMode ? '#1A2024' : '#FDFDFD',
+    borderTopColor: isDarkMode ? '#374151' : '#E5E7EB',
+    position: 'absolute' as 'absolute',
+    height: 85,
+    paddingBottom: 20,
+    paddingTop: 10,
+    elevation: 0,
+    ...(Platform.OS === 'ios' && {
+      shadowOpacity: 0,
+    }),
+  };
+
   return (
-    <>
-      <StatusBar 
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={Platform.select({
-          android: isDarkMode ? '#1A2024' : '#FDFDFD',
-          ios: 'transparent'
-        })}
-        translucent={Platform.OS === 'android'}
-      />
-      <Tab.Navigator 
-        screenOptions={({ route }) => ({
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => {
-            let IconComponent;
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarIcon: ({ color, size }) => {
+          let IconComponent;
 
-            if (route.name === 'Hymnals') {
-              IconComponent = BookOpenIcon;
-            } else if (route.name === 'Hagerigna') {
-              IconComponent = MusicalNoteIcon;
-            } else if (route.name === 'Music Player') {
-              IconComponent = PlayIcon;
-            } else if (route.name === 'Settings') {
-              IconComponent = Cog6ToothIcon;
-            }
+          if (route.name === 'Hymnals') {
+            IconComponent = BookOpenIcon;
+          } else if (route.name === 'Hagerigna') {
+            IconComponent = MusicalNoteIcon;
+          } else if (route.name === 'Music Player') {
+            IconComponent = PlayIcon;
+          } else if (route.name === 'Settings') {
+            IconComponent = Cog6ToothIcon;
+          }
 
-            return IconComponent ? <IconComponent size={size} color={color} /> : null;
-          },
-          tabBarActiveTintColor: '#EA9215',
-          tabBarInactiveTintColor: isDarkMode ? '#9CA3AF' : '#6B7280',
-          tabBarStyle: Platform.select({
-            ios: {
-              backgroundColor: isDarkMode ? '#1A2024' : '#FDFDFD',
-              borderTopColor: isDarkMode ? '#374151' : '#E5E7EB',
-              position: 'absolute',
-              height: 85,
-              paddingBottom: 20,
-              paddingTop: 10,
-              elevation: 0,
-              shadowOpacity: 0,
-            },
-            android: {
-              backgroundColor: isDarkMode ? '#1A2024' : '#FDFDFD',
-              borderTopColor: isDarkMode ? '#374151' : '#E5E7EB',
-              position: 'absolute',
-              height: 85,
-              paddingBottom: 20,
-              paddingTop: 10,
-              elevation: 0,
-            }
-          }),
-          tabBarLabelStyle: {
-            fontFamily: 'Nokia-Bold',
-            fontSize: 12,
-          },
-        })}
-      >
-        <Tab.Screen name="Hymnals" component={SongStack} />
-        <Tab.Screen name="Hagerigna" component={HagerignaStack} />
-        <Tab.Screen name="Music Player" component={MusicPlayer} />
-        <Tab.Screen name="Settings" component={Settings} />
-      </Tab.Navigator>
-    </>
+          return IconComponent ? <IconComponent size={size} color={color} /> : null;
+        },
+        tabBarActiveTintColor: '#EA9215',
+        tabBarInactiveTintColor: isDarkMode ? '#9CA3AF' : '#6B7280',
+        tabBarStyle: tabBarStyle,
+        tabBarLabelStyle: {
+          fontFamily: 'Nokia-Bold',
+          fontSize: 12,
+        },
+      })}
+    >
+      <Tab.Screen name="Hymnals" component={SongStack} />
+      <Tab.Screen name="Hagerigna" component={HagerignaStack} />
+      <Tab.Screen name="Music Player" component={MusicPlayer} />
+      <Tab.Screen name="Settings" component={Settings} />
+    </Tab.Navigator>
   );
 };
 
-const App = () => {
+const AppContent = () => {
+  const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
+
   useEffect(() => {
     // Check for updates when app starts
     syncService.checkForUpdates();
@@ -162,12 +147,28 @@ const App = () => {
   }, []);
 
   return (
+    <>
+      <StatusBar 
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+        backgroundColor={Platform.select({
+          android: isDarkMode ? '#1A2024' : '#FDFDFD',
+          ios: 'transparent'
+        })}
+        translucent={Platform.OS === 'android'}
+      />
+      <NavigationContainer>
+        <MainTabs />
+      </NavigationContainer>
+    </>
+  );
+};
+
+const App = () => {
+  return (
     <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <Provider store={store}>
-          <NavigationContainer>
-            <TabNavigator />
-          </NavigationContainer>
+          <AppContent />
         </Provider>
       </GestureHandlerRootView>
     </SafeAreaProvider>
