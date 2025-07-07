@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableWithoutFeedback, SafeAreaView } from 'react-native';
+import { View, Text, ScrollView, TouchableWithoutFeedback, SafeAreaView, TouchableOpacity } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
-import { useSelector } from 'react-redux';
-import { RootState } from '../../store';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '../../store';
 import { RootStackParamList } from '../../../App';
 import { ArrowLeftIcon, ArrowsPointingOutIcon, AdjustmentsHorizontalIcon, HashtagIcon } from 'react-native-heroicons/outline';
+import { HeartIcon as SolidHeartIcon } from 'react-native-heroicons/solid';
+import { HeartIcon as OutlineHeartIcon } from 'react-native-heroicons/outline';
 import FontSizePopup from './../CustomBottomSheet';
 import NumpadModal from './../NumpadModal';
 import FullScreenVerse from './../FullScreenVerse';
@@ -15,6 +17,7 @@ import { runOnJS } from 'react-native-reanimated';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import hagerignaData from './HagerignaData.json';
 import { HagerignaHymn } from '../../services/hymnalService';
+import { loadFavorites, toggleFavorite } from '../../store/favoritesSlice';
 import Orientation from 'react-native-orientation-locker';
 
 type SongDetailRouteProp = RouteProp<RootStackParamList, 'HagerignaDetail'>;
@@ -24,8 +27,12 @@ const HagerignaDetail = () => {
   const route = useRoute<SongDetailRouteProp>();
   const navigation = useNavigation<HagerignaDetailNavigationProp>();
   const { song: initialSong, songNumber } = route.params;
+
+  const dispatch: AppDispatch = useDispatch();
   const fontSize = useSelector((state: RootState) => state.fontSize.fontSize);
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
+  const { favoriteIds = [], isLoaded: favoritesLoaded = false } = useSelector((state: RootState) => state.favorites) || {};
+
   const [isPopupVisible, setPopupVisible] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isNumpadVisible, setNumpadVisible] = useState(false);
@@ -35,6 +42,12 @@ const HagerignaDetail = () => {
   const handleClosePopup = () => setPopupVisible(false);
   const handleOpenNumpad = () => setNumpadVisible(true);
   const handleCloseNumpad = () => setNumpadVisible(false);
+
+  useEffect(() => {
+    if (!favoritesLoaded) {
+      dispatch(loadFavorites());
+    }
+  }, [dispatch, favoritesLoaded]);
 
   useEffect(() => {
     setSong(initialSong);
@@ -47,6 +60,10 @@ const HagerignaDetail = () => {
     }
     // Orientation is handled by FullScreenVerse when it's visible
   }, [isFullScreen]);
+
+  const handleToggleFavorite = () => {
+    dispatch(toggleFavorite(song.id, song.title));
+  };
 
   const totalSongs = hagerignaData.resources.array[2].item.length;
 
@@ -150,6 +167,14 @@ const HagerignaDetail = () => {
                 )}
               </View>
             </View>
+            
+            <TouchableOpacity onPress={handleToggleFavorite} style={tw`p-2`}>
+              {favoriteIds.includes(song.id) ? (
+                <SolidHeartIcon size={24} color={tw.color('red-500')} />
+              ) : (
+                <OutlineHeartIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+              )}
+            </TouchableOpacity>
             
             <TouchableWithoutFeedback onPress={() => setIsFullScreen(true)}>
               <View style={tw`p-2 mr-2`}>

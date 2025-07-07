@@ -14,6 +14,7 @@ import tw from '../../tailwind';
 
 type Song = {
   title: string;
+  englishTitle: string;
   lyrics: string;
 };
 
@@ -41,11 +42,13 @@ const SongList = () => {
   useEffect(() => {
     const loadFile = () => {
       try {
-        const newTitles = hymnalData.resources.array[0].item; // Titles array
+        const newTitles = hymnalData.resources.array[0].item; // Amharic titles array
+        const englishTitles = hymnalData.resources.array[3].item; // English titles array
         const newSongs = hymnalData.resources.array[2].item; // Lyrics array
 
         const combinedSongs = newTitles.map((title: string, index: number) => ({
           title,
+          englishTitle: englishTitles[index] || '', // English title with fallback
           lyrics: newSongs[index],
         }));
 
@@ -66,6 +69,7 @@ const SongList = () => {
     } else {
       const filtered = songs.filter((song, _index) =>
         song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        song.englishTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
         song.lyrics.toLowerCase().includes(searchQuery.toLowerCase())
       );
       setFilteredSongs(filtered);
@@ -100,9 +104,16 @@ const SongList = () => {
               <Text style={tw`text-lg font-nokia-bold text-2xl ml text-accent-6 min-w-[35px]`}>
                 {songNumber}
               </Text>
-              <Text style={tw`text-base font-nokia-bold flex-1 text-2xl ml-3 leading-6 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`} numberOfLines={2}>
-                {item.title}
-              </Text>
+              <View style={tw`ml-3 flex-1`}>
+                <Text style={tw`text-base font-nokia-bold text-2xl leading-6 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`} numberOfLines={2}>
+                  {item.title}
+                </Text>
+                {item.englishTitle && (
+                  <Text style={tw`text-sm font-nokia-regular mt-1 text-accent-6`} numberOfLines={1}>
+                    {item.englishTitle}
+                  </Text>
+                )}
+              </View>
             </View>
           </View>
         </TouchableWithoutFeedback>

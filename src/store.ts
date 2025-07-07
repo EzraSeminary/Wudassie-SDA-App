@@ -1,5 +1,6 @@
 // filepath: /Users/amanwtsegaw/Desktop/Melak_Project/Application/Test/WudassieApp/src/store.ts
-import { configureStore, createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { configureStore, createSlice, PayloadAction, ThunkAction, Action } from '@reduxjs/toolkit';
+import favoritesReducer from './store/favoritesSlice';
 
 interface FontSizeState {
   fontSize: number;
@@ -47,10 +48,17 @@ const store = configureStore({
   reducer: {
     fontSize: fontSizeSlice.reducer,
     theme: themeSlice.reducer,
+    favorites: favoritesReducer,
   },
 });
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
+export type AppThunk<ReturnType = void> = ThunkAction<
+  ReturnType,
+  RootState,
+  unknown,
+  Action<string>
+>;
 
 export default store;

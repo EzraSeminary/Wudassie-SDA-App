@@ -20,10 +20,12 @@ import HagerignaList from './src/components/Hagerigna/HagerignaList';
 import HagerignaDetail from './src/components/Hagerigna/HagerignaDetail';
 import Settings from './src/components/Settings/Settings';
 import MusicPlayer from './src/components/YoutubeLink/YouTubeLinks';
-import { BookOpenIcon, MusicalNoteIcon, PlayIcon, Cog6ToothIcon} from 'react-native-heroicons/outline';
+import FavoritesList from './src/components/Favorites/FavoritesList';
+import { BookOpenIcon, MusicalNoteIcon, PlayIcon, Cog6ToothIcon, HeartIcon } from 'react-native-heroicons/outline';
 import { syncService } from './src/services/syncService';
 import NetInfo from '@react-native-community/netinfo';
 import { HagerignaHymn } from './src/services/hymnalService';
+import Toast from 'react-native-toast-message';
 
 export type RootStackParamList = {
   SongDetail: { song: { title: string; lyrics: string; }, songNumber: number };
@@ -33,6 +35,7 @@ export type RootStackParamList = {
     song: HagerignaHymn;
     songNumber: number;
   };
+  FavoritesList: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -73,6 +76,28 @@ const HagerignaStack = () => (
   </Stack.Navigator>
 );
 
+const FavoritesStack = () => (
+  <Stack.Navigator
+    initialRouteName="FavoritesList"
+    screenOptions={{
+      headerShown: false,
+    }}
+  >
+    <Stack.Screen
+      name="FavoritesList"
+      component={FavoritesList}
+    />
+    <Stack.Screen
+      name="HagerignaDetail"
+      component={HagerignaDetail}
+    />
+    <Stack.Screen
+      name="SongDetail"
+      component={SongDetail}
+    />
+  </Stack.Navigator>
+);
+
 const Tab = createBottomTabNavigator();
 
 const MainTabs = () => {
@@ -90,40 +115,43 @@ const MainTabs = () => {
       shadowOpacity: 0,
     }),
   };
-
+  
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarIcon: ({ color, size }) => {
-          let IconComponent;
+      <Tab.Navigator 
+        screenOptions={({ route }) => ({
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => {
+            let IconComponent;
 
-          if (route.name === 'Hymnals') {
-            IconComponent = BookOpenIcon;
-          } else if (route.name === 'Hagerigna') {
-            IconComponent = MusicalNoteIcon;
-          } else if (route.name === 'Music Player') {
-            IconComponent = PlayIcon;
-          } else if (route.name === 'Settings') {
-            IconComponent = Cog6ToothIcon;
-          }
+            if (route.name === 'Hymnals') {
+              IconComponent = BookOpenIcon;
+            } else if (route.name === 'Hagerigna') {
+              IconComponent = MusicalNoteIcon;
+          } else if (route.name === 'Favorites') {
+            IconComponent = HeartIcon;
+            } else if (route.name === 'Music Player') {
+              IconComponent = PlayIcon;
+            } else if (route.name === 'Settings') {
+              IconComponent = Cog6ToothIcon;
+            }
 
-          return IconComponent ? <IconComponent size={size} color={color} /> : null;
-        },
-        tabBarActiveTintColor: '#EA9215',
-        tabBarInactiveTintColor: isDarkMode ? '#9CA3AF' : '#6B7280',
+            return IconComponent ? <IconComponent size={size} color={color} /> : null;
+          },
+          tabBarActiveTintColor: '#EA9215',
+          tabBarInactiveTintColor: isDarkMode ? '#9CA3AF' : '#6B7280',
         tabBarStyle: tabBarStyle,
-        tabBarLabelStyle: {
-          fontFamily: 'Nokia-Bold',
-          fontSize: 12,
-        },
-      })}
-    >
-      <Tab.Screen name="Hymnals" component={SongStack} />
-      <Tab.Screen name="Hagerigna" component={HagerignaStack} />
-      <Tab.Screen name="Music Player" component={MusicPlayer} />
-      <Tab.Screen name="Settings" component={Settings} />
-    </Tab.Navigator>
+          tabBarLabelStyle: {
+            fontFamily: 'Nokia-Bold',
+            fontSize: 12,
+          },
+        })}
+      >
+        <Tab.Screen name="Hymnals" component={SongStack} />
+        <Tab.Screen name="Hagerigna" component={HagerignaStack} />
+      <Tab.Screen name="Favorites" component={FavoritesStack} />
+        <Tab.Screen name="Music Player" component={MusicPlayer} />
+        <Tab.Screen name="Settings" component={Settings} />
+      </Tab.Navigator>
   );
 };
 
@@ -159,6 +187,7 @@ const AppContent = () => {
       <NavigationContainer>
         <MainTabs />
       </NavigationContainer>
+      <Toast />
     </>
   );
 };

@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableWithoutFeedback, ScrollView, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableWithoutFeedback, ScrollView, Platform, TouchableOpacity } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
-import { useSelector } from 'react-redux';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSelector, useDispatch } from 'react-redux';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { RootState } from '../store';
+import { RootState, AppDispatch } from '../store';
 import { RootStackParamList } from '../../App';
 import { ArrowLeftIcon, ArrowsPointingOutIcon, AdjustmentsHorizontalIcon, HashtagIcon } from 'react-native-heroicons/outline';
+import { HeartIcon as SolidHeartIcon } from 'react-native-heroicons/solid';
+import { HeartIcon as OutlineHeartIcon } from 'react-native-heroicons/outline';
+import { loadFavorites, toggleFavorite } from '../store/favoritesSlice';
 import FontSizePopup from './CustomBottomSheet';
 import NumpadModal from './NumpadModal';
 import FullScreenVerse from './FullScreenVerse';
@@ -22,14 +26,31 @@ const SongDetail = () => {
   const { song, songNumber } = route.params;
   const fontSize = useSelector((state: RootState) => state.fontSize.fontSize);
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
+  const { favoriteIds = [], isLoaded: favoritesLoaded = false } = useSelector((state: RootState) => state.favorites) || {};
+  const dispatch: AppDispatch = useDispatch();
+  
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isFontSizePopupVisible, setIsFontSizePopupVisible] = useState(false);
   const [isNumpadVisible, setIsNumpadVisible] = useState(false);
+
+  // Generate consistent ID for hymnal songs
+  const hymnalSongId = `hymnal-${songNumber}`;
+  const isFavorite = favoriteIds.includes(hymnalSongId);
+
+  useEffect(() => {
+    if (!favoritesLoaded) {
+      dispatch(loadFavorites());
+    }
+  }, [dispatch, favoritesLoaded]);
 
   const handleOpenPopup = () => setIsFontSizePopupVisible(true);
   const handleClosePopup = () => setIsFontSizePopupVisible(false);
   const handleOpenNumpad = () => setIsNumpadVisible(true);
   const handleCloseNumpad = () => setIsNumpadVisible(false);
+
+  const handleToggleFavorite = () => {
+    dispatch(toggleFavorite(hymnalSongId, song.title));
+  };
 
   // Get total songs count
   const totalSongs = hymnalData.resources.array[0].item.length;
@@ -40,39 +61,19 @@ const SongDetail = () => {
 
   const handleGoToSong = (songNum: number) => {
     setIsNumpadVisible(false);
-    const songData = hymnalData[songNum - 1];
-    navigation.navigate('SongDetail', { song: songData, songNumber: songNum });
-  };
-
-  const navigateToSong = (direction: 'next' | 'previous') => {
-    let newSongNumber = songNumber;
-    
-    if (direction === 'next' && songNumber < totalSongs) {
-      newSongNumber = songNumber + 1;
-    } else if (direction === 'previous' && songNumber > 1) {
-      newSongNumber = songNumber - 1;
-    } else {
-      return; // Don't navigate if at boundaries
-    }
-
-    const newSongIndex = newSongNumber - 1;
-    const newTitle = hymnalData.resources.array[0].item[newSongIndex];
-    const newLyrics = hymnalData.resources.array[2].item[newSongIndex];
+    const songIndex = songNum - 1;
+    const newTitle = hymnalData.resources.array[0].item[songIndex];
+    const newLyrics = hymnalData.resources.array[2].item[songIndex];
     
     const newSong = {
       title: newTitle,
       lyrics: newLyrics,
     };
-
-    navigation.setParams({
-      song: newSong,
-      songNumber: newSongNumber,
-    });
+    
+    navigation.navigate('SongDetail', { song: newSong, songNumber: songNum });
   };
 
-  const handleSwipeNavigation = (direction: 'next' | 'previous') => {
-    navigateToSong(direction);
-  };
+
 
   const dynamicStyles = {
     container: tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`,
@@ -114,6 +115,15 @@ const SongDetail = () => {
               {songNumber}. {song.title}
             </Text>
           </View>
+          
+          {/* Favorite Button */}
+          <TouchableOpacity onPress={handleToggleFavorite} style={tw`p-2 mr-2`}>
+            {isFavorite ? (
+              <SolidHeartIcon size={24} color={tw.color('red-500')} />
+            ) : (
+              <OutlineHeartIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+            )}
+          </TouchableOpacity>
           
           {/* Fullscreen Button */}
           <TouchableWithoutFeedback onPress={() => setIsFullScreen(true)}>
