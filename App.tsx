@@ -9,11 +9,11 @@ import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Provider, useSelector } from 'react-redux';
+import { Provider, useSelector, useDispatch } from 'react-redux';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar, Platform } from 'react-native';
-import store, { RootState } from './src/store';
+import store, { RootState, loadTheme, AppDispatch } from './src/store';
 import SongList from './src/components/SongList';
 import SongDetail from './src/components/SongDetail';
 import HagerignaList from './src/components/Hagerigna/HagerignaList';
@@ -103,7 +103,8 @@ const Tab = createBottomTabNavigator();
 const MainTabs = () => {
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
 
-  const tabBarStyle = {
+  // Memoize the tab bar style to prevent unnecessary re-renders
+  const tabBarStyle = React.useMemo(() => ({
     backgroundColor: isDarkMode ? '#1A2024' : '#FDFDFD',
     borderTopColor: isDarkMode ? '#374151' : '#E5E7EB',
     position: 'absolute' as 'absolute',
@@ -114,10 +115,18 @@ const MainTabs = () => {
     ...(Platform.OS === 'ios' && {
       shadowOpacity: 0,
     }),
-  };
-  
+  }), [isDarkMode]);
+
+  const tabBarInactiveTintColor = React.useMemo(() => 
+    isDarkMode ? '#9CA3AF' : '#6B7280', [isDarkMode]
+  );
+
+  // Force re-render when theme changes
+  const themeKey = isDarkMode ? 'dark' : 'light';
+
   return (
       <Tab.Navigator 
+        key={themeKey}
         screenOptions={({ route }) => ({
           headerShown: false,
           tabBarIcon: ({ color, size }) => {
@@ -138,8 +147,8 @@ const MainTabs = () => {
             return IconComponent ? <IconComponent size={size} color={color} /> : null;
           },
           tabBarActiveTintColor: '#EA9215',
-          tabBarInactiveTintColor: isDarkMode ? '#9CA3AF' : '#6B7280',
-        tabBarStyle: tabBarStyle,
+          tabBarInactiveTintColor: tabBarInactiveTintColor,
+          tabBarStyle: tabBarStyle,
           tabBarLabelStyle: {
             fontFamily: 'Nokia-Bold',
             fontSize: 12,
@@ -157,8 +166,12 @@ const MainTabs = () => {
 
 const AppContent = () => {
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
+  const dispatch = useDispatch<AppDispatch>();
 
   useEffect(() => {
+    // Load saved theme when app starts
+    dispatch(loadTheme());
+    
     // Check for updates when app starts
     syncService.checkForUpdates();
 
@@ -172,7 +185,12 @@ const AppContent = () => {
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [dispatch]);
+
+  // Log theme changes for debugging
+  useEffect(() => {
+    console.log('Theme changed to:', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
 
   return (
     <>
@@ -184,8 +202,38 @@ const AppContent = () => {
         })}
         translucent={Platform.OS === 'android'}
       />
-      <NavigationContainer>
-        <MainTabs />
+      <NavigationContainer
+        theme={{
+          dark: isDarkMode,
+          colors: {
+            primary: '#EA9215',
+            background: isDarkMode ? '#1A2024' : '#FDFDFD',
+            card: isDarkMode ? '#1A2024' : '#FDFDFD',
+            text: isDarkMode ? '#FDFDFD' : '#1A2024',
+            border: isDarkMode ? '#374151' : '#E5E7EB',
+            notification: '#EA9215',
+          },
+          fonts: {
+            regular: {
+              fontFamily: 'Nokia-Bold',
+              fontWeight: 'bold',
+            },
+            medium: {
+              fontFamily: 'Nokia-Bold',
+              fontWeight: 'bold',
+            },
+            light: {
+              fontFamily: 'Nokia-Bold',
+              fontWeight: 'bold',
+            },
+            thin: {
+              fontFamily: 'Nokia-Bold',
+              fontWeight: 'bold',
+            },
+          },
+        }}
+      >
+        <MainTabs key={isDarkMode ? 'dark' : 'light'} />
       </NavigationContainer>
       <Toast />
     </>

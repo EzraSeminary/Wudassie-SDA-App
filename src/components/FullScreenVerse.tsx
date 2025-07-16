@@ -7,8 +7,7 @@ import {
   BackHandler,
   StatusBar,
   Platform,
-  TouchableOpacity,
-  Modal
+  TouchableOpacity
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -143,6 +142,8 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
       Orientation.unlockAllOrientations();
     }
   }, [isVisible, song, handleClose]);
+
+
 
   const goToNext = () => {
     if (currentSection < lyricSections.length - 1) {
@@ -289,22 +290,15 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
         </View>
       </SafeAreaView>
 
-      {/* Font Size Popup Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={isFontSizePopupVisible}
-        onRequestClose={handleCloseFontSizePopup}
-        statusBarTranslucent={true}
-        supportedOrientations={['landscape']}
-      >
-        <View style={tw`flex-1 justify-center items-center bg-black bg-opacity-50`}>
-          <View style={tw`w-80 p-6 rounded-xl items-center ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-1'}`}>
-            <Text style={tw`text-xl font-nokia-bold mb-6 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
+      {/* Font Size Popup Overlay */}
+      {isFontSizePopupVisible && (
+        <View style={tw`absolute inset-0 z-50 justify-center items-center bg-black bg-opacity-50`}>
+          <View style={tw`w-96 p-8 rounded-xl items-center ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-1'}`}>
+            <Text style={tw`text-2xl font-nokia-bold mb-8 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
               Adjust Font Size
             </Text>
             <Slider
-              style={tw`w-64 h-10 mb-6`}
+              style={tw`w-80 h-12 mb-8`}
               minimumValue={12}
               maximumValue={40}
               value={fontSize}
@@ -312,22 +306,22 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
               minimumTrackTintColor="#EA9215"
               maximumTrackTintColor={isDarkMode ? '#3A4750' : '#EEEEEE'}
             />
-            <View style={tw`flex-row items-center justify-between w-64 mb-6`}>
-              <Text style={tw`text-sm font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>Small</Text>
-              <Text style={tw`text-sm font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>Large</Text>
+            <View style={tw`flex-row items-center justify-between w-80 mb-8`}>
+              <Text style={tw`text-base font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>Small</Text>
+              <Text style={tw`text-base font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>Large</Text>
             </View>
-            <Text style={[tw`text-center font-nokia-bold mb-6 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`, { fontSize }]}>
+            <Text style={[tw`text-center font-nokia-bold mb-8 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`, { fontSize }]}>
               የሱስ ክርስቶስ የኔ ወዳጅ
             </Text>
             <TouchableOpacity 
               onPress={handleCloseFontSizePopup}
-              style={tw`bg-accent-6 px-6 py-3 rounded-lg`}
+              style={tw`bg-accent-6 px-8 py-4 rounded-lg`}
             >
-              <Text style={tw`text-white font-nokia-bold`}>Close</Text>
+              <Text style={tw`text-white font-nokia-bold text-lg`}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      )}
     </View>
   );
 };

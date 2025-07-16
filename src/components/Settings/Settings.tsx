@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Switch, ScrollView, SafeAreaView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState, setFontSize, toggleDarkMode } from '../../store';
+import { RootState, setFontSize, toggleDarkModeWithPersistence, AppDispatch } from '../../store';
 import { Cog6ToothIcon, MusicalNoteIcon, BookOpenIcon, HeartIcon, ArrowPathIcon } from 'react-native-heroicons/outline';
 import { getCardStyle } from '../../utils/platformUtils';
 import { hymnalService } from '../../services/hymnalService';
@@ -11,11 +11,11 @@ import tw from '../../../tailwind';
 const Settings = () => {
   const fontSize = useSelector((state: RootState) => state.fontSize.fontSize);
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const [isUpdating, setIsUpdating] = useState(false);
 
   const handleToggleTheme = () => {
-    dispatch(toggleDarkMode());
+    dispatch(toggleDarkModeWithPersistence());
   };
 
   const handleUpdateSongs = async () => {
