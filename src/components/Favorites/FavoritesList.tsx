@@ -122,7 +122,7 @@ const FavoritesList = () => {
   };
 
   const dynamicStyles = {
-    container: tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`,
+    container: tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'} pt-8`,
     songItem: [
       tw`flex-row items-center rounded-xl mt-2 mx-4 p-4 ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
       getCardStyle()
@@ -186,7 +186,7 @@ const FavoritesList = () => {
     return (
       <View style={dynamicStyles.container}>
         <SafeAreaView style={tw`flex-1`}>
-          <View style={dynamicStyles.header}>
+          <View style={[dynamicStyles.header, tw`pt-8`]}>
             <MusicalNoteIcon size={28} color="#EA9215" />
             <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
               Favorite Songs

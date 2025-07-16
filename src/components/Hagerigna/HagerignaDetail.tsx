@@ -123,7 +123,7 @@ const HagerignaDetail = () => {
     .simultaneousWithExternalGesture();
 
   const dynamicStyles = {
-    container: tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`,
+    container: tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'} pt-12`,
     title: [
       tw`font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
       { fontSize: fontSize + 6, lineHeight: 32 }

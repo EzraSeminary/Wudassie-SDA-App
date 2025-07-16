@@ -1,15 +1,17 @@
 import React, {useEffect, useState} from 'react';
-import {FlatList, Text, View, TextInput, TouchableWithoutFeedback, Platform} from 'react-native';
+import {FlatList, Text, View, TextInput, TouchableWithoutFeedback, SafeAreaView, TouchableOpacity} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {useSelector} from 'react-redux';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {RootState} from '../store';
+import {useSelector, useDispatch} from 'react-redux';
+import {RootState, AppDispatch} from '../store';
 import {RootStackParamList} from '../../App';
 import hymnalData from './SDA_Hymnal.json';
-import { BookOpenIcon, HashtagIcon, MagnifyingGlassIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import { BookOpenIcon, HashtagIcon, MagnifyingGlassIcon as OutlineSearchIcon, XMarkIcon as SolidXMarkIcon } from 'react-native-heroicons/outline';
+import { HeartIcon as SolidHeartIcon } from 'react-native-heroicons/solid';
+import { HeartIcon as OutlineHeartIcon } from 'react-native-heroicons/outline';
 import NumpadModal from './NumpadModal';
 import { getCardStyle } from '../utils/platformUtils';
+import {loadFavorites, toggleFavorite} from '../store/favoritesSlice';
 import tw from '../../tailwind';
 
 type Song = {
@@ -28,6 +30,14 @@ const SongList = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const navigation = useNavigation<SongListNavigationProp>();
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
+  const dispatch: AppDispatch = useDispatch();
+  const { favoriteIds = [], isLoaded: favoritesLoaded = false } = useSelector((state: RootState) => state.favorites) || {};
+
+  useEffect(() => {
+    if (!favoritesLoaded) {
+      dispatch(loadFavorites());
+    }
+  }, [dispatch, favoritesLoaded]);
 
   const handleOpenNumpad = () => setNumpadVisible(true);
   const handleCloseNumpad = () => setNumpadVisible(false);
@@ -38,6 +48,12 @@ const SongList = () => {
       setFilteredSongs(songs);
     }
   };
+
+  const handleToggleFavorite = (songId: string, songTitle: string) => {
+    dispatch(toggleFavorite(songId, songTitle));
+  };
+
+
 
   useEffect(() => {
     const loadFile = () => {
@@ -92,39 +108,42 @@ const SongList = () => {
     // Find the original song number
     const originalIndex = songs.findIndex(s => s.title === item.title && s.lyrics === item.lyrics);
     const songNumber = originalIndex + 1;
+    const songId = `hymnal-${originalIndex + 1}`;
+    const isFavorite = favoriteIds.includes(songId);
     
     return (
-      <View style={[
-        tw`flex-row items-center mb-3 mx-4 rounded-xl ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
+      <TouchableOpacity onPress={() => handleSelect(item, index)} style={[
+        tw`flex-row items-center rounded-xl mt-2 mx-4 p-4 ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
         getCardStyle()
       ]}>
-        <TouchableWithoutFeedback onPress={() => handleSelect(item, index)}>
-          <View style={tw`flex-1 p-4`}>
-            <View style={tw`flex-row items-center`}>
-              <Text style={tw`text-lg font-nokia-bold text-2xl ml text-accent-6 min-w-[35px]`}>
-                {songNumber}
-              </Text>
-              <View style={tw`ml-3 flex-1`}>
-                <Text style={tw`text-base font-nokia-bold text-2xl leading-6 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`} numberOfLines={2}>
-                  {item.title}
-                </Text>
-                {item.englishTitle && (
-                  <Text style={tw`text-sm font-nokia-regular mt-1 text-accent-6`} numberOfLines={1}>
-                    {item.englishTitle}
-                  </Text>
-                )}
-              </View>
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
-      </View>
+        <Text style={tw`text-2xl font-nokia-bold mr-4 text-accent-6 min-w-[35px]`}>
+          {songNumber}
+        </Text>
+        <View style={tw`ml-3 flex-1`}>
+          <Text style={tw`text-2xl font-nokia-bold leading-6 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`} numberOfLines={2}>
+            {item.title}
+          </Text>
+          {item.englishTitle && (
+            <Text style={tw`font-nokia-bold mt-1 text-accent-6`} numberOfLines={1}>
+              {item.englishTitle}
+            </Text>
+          )}
+        </View>
+        <TouchableOpacity onPress={(e) => { e.stopPropagation(); handleToggleFavorite(songId, item.title); }} style={tw`p-2 -mr-2`}>
+          {isFavorite ? (
+            <SolidHeartIcon size={24} color={tw.color('red-500')} />
+          ) : (
+            <OutlineHeartIcon size={24} color={tw.color('gray-500')} />
+          )}
+        </TouchableOpacity>
+      </TouchableOpacity>
     );
   };
 
   return (
     <View style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}>
-      <SafeAreaView style={tw`flex-1`} edges={['top']}>
-        <View style={tw`flex-row items-center justify-between px-5 pb-4 pt-4`}>
+      <SafeAreaView style={tw`flex-1`}>
+        <View style={tw`flex-row items-center justify-between px-4 pt-12`}>
           <View style={tw`flex-row items-center flex-1`}>
             <BookOpenIcon size={28} color="#EA9215" />
             <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
@@ -134,19 +153,19 @@ const SongList = () => {
           <TouchableWithoutFeedback onPress={handleToggleSearch}>
             <View style={tw`p-2`}>
               {isSearchVisible ? (
-                <XMarkIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
+                <SolidXMarkIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
               ) : (
-                <MagnifyingGlassIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
+                <OutlineSearchIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
               )}
             </View>
           </TouchableWithoutFeedback>
         </View>
 
         {isSearchVisible && (
-          <View style={tw`px-5 pb-4`}>
+          <View style={tw`px-4 pb-4`}>
             <TextInput
               style={[
-                tw`h-12 rounded-full px-4 border-2 font-nokia-bold ${isDarkMode ? 'bg-dark-primary-8 border-dark-primary-6 text-dark-secondary-1' : 'bg-primary-3 border-primary-6 text-secondary-10'}`,
+                tw`h-12 rounded-lg px-4 border-2 font-nokia-bold ${isDarkMode ? 'bg-dark-primary-8 border-dark-primary-6 text-dark-secondary-1' : 'bg-primary-3 border-primary-6 text-secondary-10'}`,
                 getCardStyle()
               ]}
               placeholder="Search titles or lyrics..."
@@ -166,15 +185,12 @@ const SongList = () => {
           scrollEnabled={true}
           bounces={true}
           removeClippedSubviews={true}
-          contentContainerStyle={Platform.select({
-            ios: tw`pb-28`,
-            android: tw`pb-32`
-          })}
+          contentContainerStyle={tw`pb-24`}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
             searchQuery ? (
-              <View style={tw`p-8 items-center`}>
-                <Text style={tw`text-lg font-nokia-bold text-center ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`}>
+              <View style={tw`py-8 px-4 items-center`}>
+                <Text style={tw`text-lg text-center font-nokia-bold ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`}>
                   No songs found for "{searchQuery}"
                 </Text>
               </View>
@@ -186,20 +202,7 @@ const SongList = () => {
       {/* Floating Numpad Button */}
       <TouchableWithoutFeedback onPress={handleOpenNumpad}>
         <View style={[
-          tw`absolute right-5 bg-accent-6 rounded-full p-4 shadow-lg`,
-          Platform.select({
-            ios: {
-              bottom: 100,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 4,
-            },
-            android: {
-              bottom: 100,
-              elevation: 8,
-            }
-          }),
+          tw`absolute bottom-10 right-5 bg-accent-6 rounded-full p-4`,
           getCardStyle()
         ]}>
           <HashtagIcon size={24} color="#FDFDFD" />

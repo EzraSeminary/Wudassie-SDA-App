@@ -16,6 +16,8 @@ import FullScreenVerse from './FullScreenVerse';
 import { getCardStyle } from '../utils/platformUtils';
 import tw from '../../tailwind';
 import hymnalData from './SDA_Hymnal.json';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 
 type SongDetailRouteProp = RouteProp<RootStackParamList, 'SongDetail'>;
 type SongDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SongDetail'>;
@@ -73,6 +75,36 @@ const SongDetail = () => {
     navigation.navigate('SongDetail', { song: newSong, songNumber: songNum });
   };
 
+  const navigateToSong = (direction: 'next' | 'previous') => {
+    let newSongNum = songNumber;
+    if (direction === 'next' && songNumber < totalSongs) {
+      newSongNum = songNumber + 1;
+    } else if (direction === 'previous' && songNumber > 1) {
+      newSongNum = songNumber - 1;
+    } else {
+      return;
+    }
+    handleGoToSong(newSongNum);
+  };
+
+  const handleSwipeNavigation = (direction: 'next' | 'previous') => {
+    navigateToSong(direction);
+  };
+
+  const panGesture = Gesture.Pan()
+    .minDistance(50)
+    .onEnd((event) => {
+      const { translationX, velocityX } = event;
+      if (Math.abs(translationX) > 100 && Math.abs(velocityX) > 500) {
+        if (translationX > 0) {
+          runOnJS(handleSwipeNavigation)('previous');
+        } else {
+          runOnJS(handleSwipeNavigation)('next');
+        }
+      }
+    })
+    .simultaneousWithExternalGesture();
+
 
 
   const dynamicStyles = {
@@ -95,113 +127,115 @@ const SongDetail = () => {
   };
 
   return (
-    <>
-      <SafeAreaView 
-        style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}
-        edges={Platform.select({
-          ios: ['top'],
-          android: ['top']
-        })}
-      >
-        <View style={[dynamicStyles.header, tw`pt-4`]}>
-          <TouchableWithoutFeedback onPress={handleBackPress}>
-            <View style={tw`p-2`}>
-              <ArrowLeftIcon size={24} color="#EA9215" />
-            </View>
-          </TouchableWithoutFeedback>
-          
-          <View style={tw`flex-row items-center flex-1 mx-3`}>
-            <Text style={[dynamicStyles.title, tw`flex-1 font-nokia-bold`]} numberOfLines={2}>
-              {songNumber}. {song.title}
-            </Text>
-          </View>
-          
-          {/* Favorite Button */}
-          <TouchableOpacity onPress={handleToggleFavorite} style={tw`p-2 mr-2`}>
-            {isFavorite ? (
-              <SolidHeartIcon size={24} color={tw.color('red-500')} />
-            ) : (
-              <OutlineHeartIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-            )}
-          </TouchableOpacity>
-          
-          {/* Fullscreen Button */}
-          <TouchableWithoutFeedback onPress={() => setIsFullScreen(true)}>
-            <View style={tw`p-2 mr-2`}>
-              <ArrowsPointingOutIcon size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-            </View>
-          </TouchableWithoutFeedback>
-          
-          <TouchableWithoutFeedback onPress={handleOpenPopup}>
-            <View style={tw`p-2`}>
-              <AdjustmentsHorizontalIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-            </View>
-          </TouchableWithoutFeedback>
-        </View>
-        
-        <ScrollView 
+    <GestureDetector gesture={panGesture}>
+      <View style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}>
+        <SafeAreaView 
           style={tw`flex-1`}
-          showsVerticalScrollIndicator={false}
-          scrollEnabled={true}
-          bounces={true}
-          contentContainerStyle={Platform.select({
-            ios: { 
-              padding: 20, 
-              paddingBottom: 120 
-            },
-            android: { 
-              padding: 20, 
-              paddingBottom: 120 
-            }
+          edges={Platform.select({
+            ios: ['top'],
+            android: ['top']
           })}
         >
-          {song.lyrics.split('\\n').map((line, index) => (
-            <Text key={index} style={dynamicStyles.lyrics}>
-              {line}
-            </Text>
-          ))}
-        </ScrollView>
-
-        {/* Floating Numpad Button */}
-        <TouchableWithoutFeedback onPress={handleOpenNumpad}>
-          <View style={[
-            tw`absolute right-5 bg-accent-6 rounded-full p-4 shadow-lg`,
-            Platform.select({
-              ios: {
-                bottom: 40,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 4,
-              },
-              android: {
-                bottom: 100,
-                elevation: 8,
-              }
-            }),
-            getCardStyle()
-          ]}>
-            <HashtagIcon size={24} color="#FDFDFD" />
+          <View style={[dynamicStyles.header, tw`pt-4`]}>
+            <TouchableWithoutFeedback onPress={handleBackPress}>
+              <View style={tw`p-2`}>
+                <ArrowLeftIcon size={24} color="#EA9215" />
+              </View>
+            </TouchableWithoutFeedback>
+            
+            <View style={tw`flex-row items-center flex-1 mx-3`}>
+              <Text style={[dynamicStyles.title, tw`flex-1 font-nokia-bold`]} numberOfLines={2}>
+                {songNumber}. {song.title}
+              </Text>
+            </View>
+            
+            {/* Favorite Button */}
+            <TouchableOpacity onPress={handleToggleFavorite} style={tw`p-2 mr-2`}>
+              {isFavorite ? (
+                <SolidHeartIcon size={24} color={tw.color('red-500')} />
+              ) : (
+                <OutlineHeartIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+              )}
+            </TouchableOpacity>
+            
+            {/* Fullscreen Button */}
+            <TouchableWithoutFeedback onPress={() => setIsFullScreen(true)}>
+              <View style={tw`p-2 mr-2`}>
+                <ArrowsPointingOutIcon size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+              </View>
+            </TouchableWithoutFeedback>
+            
+            <TouchableWithoutFeedback onPress={handleOpenPopup}>
+              <View style={tw`p-2`}>
+                <AdjustmentsHorizontalIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+              </View>
+            </TouchableWithoutFeedback>
           </View>
-        </TouchableWithoutFeedback>
-      </SafeAreaView>
+          
+          <ScrollView 
+            style={tw`flex-1`}
+            showsVerticalScrollIndicator={false}
+            scrollEnabled={true}
+            bounces={true}
+            contentContainerStyle={Platform.select({
+              ios: { 
+                padding: 20, 
+                paddingBottom: 120 
+              },
+              android: { 
+                padding: 20, 
+                paddingBottom: 120 
+              }
+            })}
+          >
+            {song.lyrics.split('\\n').map((line, index) => (
+              <Text key={index} style={dynamicStyles.lyrics}>
+                {line}
+              </Text>
+            ))}
+          </ScrollView>
 
-      {/* Full Screen Verse Component */}
-      <FullScreenVerse
-        song={song}
-        isVisible={isFullScreen}
-        onClose={() => setIsFullScreen(false)}
-      />
+          {/* Floating Numpad Button */}
+          <TouchableWithoutFeedback onPress={handleOpenNumpad}>
+            <View style={[
+              tw`absolute right-5 bg-accent-6 rounded-full p-4 shadow-lg`,
+              Platform.select({
+                ios: {
+                  bottom: 40,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 4,
+                },
+                android: {
+                  bottom: 100,
+                  elevation: 8,
+                }
+              }),
+              getCardStyle()
+            ]}>
+              <HashtagIcon size={24} color="#FDFDFD" />
+            </View>
+          </TouchableWithoutFeedback>
+        </SafeAreaView>
 
-      <FontSizePopup visible={isFontSizePopupVisible} onClose={handleClosePopup} />
-      <NumpadModal 
-        visible={isNumpadVisible}
-        onClose={handleCloseNumpad}
-        onJumpToSong={handleGoToSong}
-        maxSongs={totalSongs}
-        title="Hymnal"
-      />
-    </>
+        {/* Full Screen Verse Component */}
+        <FullScreenVerse
+          song={song}
+          isVisible={isFullScreen}
+          onClose={() => setIsFullScreen(false)}
+        />
+
+        <FontSizePopup visible={isFontSizePopupVisible} onClose={handleClosePopup} />
+        <NumpadModal 
+          visible={isNumpadVisible}
+          onClose={handleCloseNumpad}
+          onJumpToSong={handleGoToSong}
+          maxSongs={totalSongs}
+          title="Hymnal"
+        />
+      </View>
+    </GestureDetector>
   );
 };
 

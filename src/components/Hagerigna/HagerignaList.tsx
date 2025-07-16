@@ -189,7 +189,7 @@ const HagerignaList = () => {
   return (
     <View style={dynamicStyles.container}>
       <SafeAreaView style={tw`flex-1`}>
-        <View style={tw`flex-row items-center justify-between p-5 pb-4 pt-4`}>
+        <View style={tw`flex-row items-center justify-between p-5 pb-4 pt-12`}>
           <View style={tw`flex-row items-center flex-1`}>
             <MusicalNoteIcon size={28} color="#EA9215" />
             <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>

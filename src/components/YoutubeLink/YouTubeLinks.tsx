@@ -33,7 +33,7 @@ const MusicPlayer = () => {
           bounces={true}
         >
           <View style={tw`p-5`}>
-            <View style={tw`flex-row items-center mb-8`}>
+            <View style={tw`flex-row items-center mb-8 pt-8`}>
               <MusicalNoteIcon size={28} color="#EA9215" />
               <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
                 Music Player
