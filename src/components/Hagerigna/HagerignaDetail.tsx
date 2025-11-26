@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableWithoutFeedback, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableWithoutFeedback, TouchableOpacity, Share } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
 import { RootStackParamList } from '../../../App';
-import { ArrowLeftIcon, ArrowsPointingOutIcon, AdjustmentsHorizontalIcon } from 'react-native-heroicons/outline';
+import { ArrowLeftIcon, ArrowsPointingOutIcon, AdjustmentsHorizontalIcon, ArrowUpTrayIcon } from 'react-native-heroicons/outline';
 import { HeartIcon as SolidHeartIcon, HashtagIcon as SolidHashtagIcon } from 'react-native-heroicons/solid';
 import { HeartIcon as OutlineHeartIcon } from 'react-native-heroicons/outline';
 import FontSizePopup from './../CustomBottomSheet';
 import NumpadModal from './../NumpadModal';
 import FullScreenVerse from './../FullScreenVerse';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import tw from '../../../tailwind';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
@@ -27,6 +27,7 @@ type HagerignaDetailNavigationProp = NativeStackNavigationProp<RootStackParamLis
 const HagerignaDetail = () => {
   const { getFloatingButtonBottom } = useTabBarHeight();
   const contentBottomPadding = useBottomContentPadding(24);
+  const insets = useSafeAreaInsets();
   const route = useRoute<SongDetailRouteProp>();
   const navigation = useNavigation<HagerignaDetailNavigationProp>();
   const { song: initialSong, songNumber } = route.params;
@@ -71,6 +72,32 @@ const HagerignaDetail = () => {
 
   const handleToggleFavorite = () => {
     dispatch(toggleFavorite(song.id, song.title));
+  };
+
+  // Clean lyrics by removing tags and formatting
+  const cleanLyrics = (lyrics: string): string => {
+    return lyrics
+      .split('\\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+      .join('\n');
+  };
+
+  // Share song as plain text
+  const handleShare = async () => {
+    try {
+      const cleanText = cleanLyrics(song.song);
+      const shareText = song.artist 
+        ? `${songNumber}. ${song.title}\n${song.artist}\n\n${cleanText}`
+        : `${songNumber}. ${song.title}\n\n${cleanText}`;
+      
+      await Share.share({
+        message: shareText,
+        title: song.title,
+      });
+    } catch (error) {
+      console.error('Error sharing song:', error);
+    }
   };
 
   const totalSongs = hagerignaData.resources.array[2].item.length;
@@ -142,7 +169,7 @@ const HagerignaDetail = () => {
       tw`font-nokia-bold mb-2 ${isDarkMode ? 'text-primary-6' : 'text-secondary-6'}`,
       { fontSize, lineHeight: 28 }
     ],
-    header: tw`flex-row justify-between items-center p-5 border-b font-nokia-bold ${isDarkMode ? 'border-dark-primary-8' : 'border-primary-6'}`
+    header: tw`flex-row justify-between items-center px-5 pb-5 border-b font-nokia-bold ${isDarkMode ? 'border-dark-primary-8' : 'border-primary-6'}`
   };
 
   if (!song) {
@@ -156,9 +183,9 @@ const HagerignaDetail = () => {
   return (
     <GestureDetector gesture={panGesture}>
       <View style={dynamicStyles.container}>
-        <SafeAreaView style={tw`flex-1`}>
+        <SafeAreaView style={tw`flex-1`} edges={['top']}>
           {/* Fixed Header */}
-          <View style={[dynamicStyles.header]}>
+          <View style={[dynamicStyles.header, { paddingTop: Math.max(insets.top + 8, 20) }]}>
             <TouchableWithoutFeedback onPress={handleBackPress}>
               <View style={tw`p-2`}>
                 <ArrowLeftIcon size={24} color="#EA9215" />
@@ -184,6 +211,11 @@ const HagerignaDetail = () => {
               ) : (
                 <OutlineHeartIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
               )}
+            </TouchableOpacity>
+
+            {/* Share Button */}
+            <TouchableOpacity onPress={handleShare} style={tw`p-2 mr-2`}>
+              <ArrowUpTrayIcon size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
             </TouchableOpacity>
 
             <TouchableWithoutFeedback onPress={() => setIsFullScreen(true)}>

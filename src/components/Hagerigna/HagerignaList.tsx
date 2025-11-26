@@ -149,7 +149,7 @@ const HagerignaList = () => {
   };
 
   const dynamicStyles = {
-    container: tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`,
+    container: tw`flex-1 mt-8 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`,
     songItem: [
           tw`flex-row items-center rounded-xl mt-2 mx-4 p-4 ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
       getCardStyle()

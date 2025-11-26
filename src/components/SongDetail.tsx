@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableWithoutFeedback, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableWithoutFeedback, ScrollView, TouchableOpacity, Share, Platform } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSelector, useDispatch } from 'react-redux';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootState, AppDispatch } from '../store';
 import { RootStackParamList } from '../../App';
-import { ArrowLeftIcon, ArrowsPointingOutIcon, AdjustmentsHorizontalIcon } from 'react-native-heroicons/outline';
+import { ArrowLeftIcon, ArrowsPointingOutIcon, AdjustmentsHorizontalIcon, ArrowUpTrayIcon } from 'react-native-heroicons/outline';
 import { HeartIcon as SolidHeartIcon, HashtagIcon as SolidHashtagIcon } from 'react-native-heroicons/solid';
 import { HeartIcon as OutlineHeartIcon } from 'react-native-heroicons/outline';
 import { loadFavorites, toggleFavorite } from '../store/favoritesSlice';
@@ -25,6 +25,7 @@ type SongDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'S
 const SongDetail = () => {
   const { getFloatingButtonBottom } = useTabBarHeight();
   const contentBottomPadding = useBottomContentPadding(2);
+  const insets = useSafeAreaInsets();
   const route = useRoute<SongDetailRouteProp>();
   const navigation = useNavigation<SongDetailNavigationProp>();
   const { song, songNumber } = route.params;
@@ -59,6 +60,30 @@ const SongDetail = () => {
 
   const handleToggleFavorite = () => {
     dispatch(toggleFavorite(hymnalSongId, song.title));
+  };
+
+  // Clean lyrics by removing tags and formatting
+  const cleanLyrics = (lyrics: string): string => {
+    return lyrics
+      .split('\\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+      .join('\n');
+  };
+
+  // Share song as plain text
+  const handleShare = async () => {
+    try {
+      const cleanText = cleanLyrics(song.lyrics);
+      const shareText = `${songNumber}. ${song.title}\n\n${cleanText}`;
+      
+      await Share.share({
+        message: shareText,
+        title: song.title,
+      });
+    } catch (error) {
+      console.error('Error sharing song:', error);
+    }
   };
 
   // Get total songs count
@@ -132,15 +157,15 @@ const SongDetail = () => {
         lineHeight: 28
       }
     ],
-    header: tw`flex-row justify-between items-center p-5 border-b font-nokia-bold ${isDarkMode ? 'border-dark-primary-8' : 'border-primary-6'}`
+    header: tw`flex-row justify-between items-center px-5 pb-5 border-b font-nokia-bold ${isDarkMode ? 'border-dark-primary-8' : 'border-primary-6'}`
   };
 
   return (
     <GestureDetector gesture={panGesture}>
       <View style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}>
-        <SafeAreaView style={tw`flex-1`}>
+        <SafeAreaView style={tw`flex-1`} edges={['top']}>
           {/* Fixed Header */}
-          <View style={[dynamicStyles.header]}>
+          <View style={[dynamicStyles.header, { paddingTop: Math.max(insets.top + 8, 20) }]}>
             <TouchableWithoutFeedback onPress={handleBackPress}>
               <View style={tw`p-2`}>
                 <ArrowLeftIcon size={24} color="#EA9215" />
@@ -160,6 +185,11 @@ const SongDetail = () => {
               ) : (
                 <OutlineHeartIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
               )}
+            </TouchableOpacity>
+
+            {/* Share Button */}
+            <TouchableOpacity onPress={handleShare} style={tw`p-2 mr-2`}>
+              <ArrowUpTrayIcon size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
             </TouchableOpacity>
 
             {/* Fullscreen Button */}

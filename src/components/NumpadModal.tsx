@@ -208,7 +208,7 @@ const NumpadModal: React.FC<NumpadModalProps> = ({
             </TouchableOpacity>
             <TouchableOpacity onPress={handleBackspace} activeOpacity={0.7} style={tw`flex-1`}>
               <View style={tw`h-16 p-4 rounded-xl justify-center items-center bg-accent-6`}>
-                <Text style={tw`text-base font-nokia-bold text-white`}>⌫</Text>
+                <Text style={tw`text-3xl font-nokia-bold text-white`}>⌫</Text>
               </View>
             </TouchableOpacity>
           </View>
