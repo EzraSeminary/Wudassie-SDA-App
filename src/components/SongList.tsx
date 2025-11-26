@@ -1,16 +1,18 @@
 import React, {useEffect, useState} from 'react';
-import {FlatList, Text, View, TextInput, TouchableWithoutFeedback, SafeAreaView, TouchableOpacity} from 'react-native';
+import {FlatList, Text, View, TextInput, TouchableWithoutFeedback, TouchableOpacity} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+//
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {useSelector, useDispatch} from 'react-redux';
 import {RootState, AppDispatch} from '../store';
 import {RootStackParamList} from '../../App';
 import hymnalData from './SDA_Hymnal.json';
-import { BookOpenIcon, HashtagIcon, MagnifyingGlassIcon as OutlineSearchIcon, XMarkIcon as SolidXMarkIcon } from 'react-native-heroicons/outline';
-import { HeartIcon as SolidHeartIcon } from 'react-native-heroicons/solid';
+import { BookOpenIcon, MagnifyingGlassIcon as OutlineSearchIcon, XMarkIcon as SolidXMarkIcon } from 'react-native-heroicons/outline';
+import { HeartIcon as SolidHeartIcon, HashtagIcon as SolidHashtagIcon } from 'react-native-heroicons/solid';
 import { HeartIcon as OutlineHeartIcon } from 'react-native-heroicons/outline';
 import NumpadModal from './NumpadModal';
-import { getCardStyle } from '../utils/platformUtils';
+import { getCardStyle, useBottomContentPadding, useTabBarHeight } from '../utils/platformUtils';
 import {loadFavorites, toggleFavorite} from '../store/favoritesSlice';
 import tw from '../../tailwind';
 
@@ -23,6 +25,8 @@ type Song = {
 type SongListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SongList'>;
 
 const SongList = () => {
+  const { getFloatingButtonBottom } = useTabBarHeight();
+  const contentBottomPadding = useBottomContentPadding(24);
   const [songs, setSongs] = useState<Song[]>([]);
   const [filteredSongs, setFilteredSongs] = useState<Song[]>([]);
   const [isNumpadVisible, setNumpadVisible] = useState(false);
@@ -143,7 +147,8 @@ const SongList = () => {
   return (
     <View style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}>
       <SafeAreaView style={tw`flex-1`}>
-        <View style={tw`flex-row items-center justify-between px-4 pt-12`}>
+        {/* Fixed Header */}
+        <View style={[tw`flex-row items-center justify-between px-4 py-4`,]}>
           <View style={tw`flex-row items-center flex-1`}>
             <BookOpenIcon size={28} color="#EA9215" />
             <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
@@ -161,55 +166,67 @@ const SongList = () => {
           </TouchableWithoutFeedback>
         </View>
 
-        {isSearchVisible && (
-          <View style={tw`px-4 pb-4`}>
-            <TextInput
-              style={[
-                tw`h-12 rounded-lg px-4 border-2 font-nokia-bold ${isDarkMode ? 'bg-dark-primary-8 border-dark-primary-6 text-dark-secondary-1' : 'bg-primary-3 border-primary-6 text-secondary-10'}`,
-                getCardStyle()
-              ]}
-              placeholder="Search titles or lyrics..."
-              placeholderTextColor={isDarkMode ? '#9CA3AF' : '#6B7280'}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              autoFocus
-            />
-          </View>
-        )}
+        {/* Content */}
+        <View style={tw`flex-1`}>
+          {isSearchVisible && (
+            <View style={tw`px-4 pb-4`}>
+              <TextInput
+                style={[
+                  tw`h-12 rounded-lg px-4 border-2 font-nokia-bold ${isDarkMode ? 'bg-dark-primary-8 border-dark-primary-6 text-dark-secondary-1' : 'bg-primary-3 border-primary-6 text-secondary-10'}`,
+                  getCardStyle()
+                ]}
+                placeholder="Search titles or lyrics..."
+                placeholderTextColor={isDarkMode ? '#9CA3AF' : '#6B7280'}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoFocus
+              />
+            </View>
+          )}
 
-        <FlatList
-          data={filteredSongs}
-          keyExtractor={(item, index) => index.toString()}
-          renderItem={renderSongItem}
-          showsVerticalScrollIndicator={false}
-          scrollEnabled={true}
-          bounces={true}
-          removeClippedSubviews={true}
-          contentContainerStyle={tw`pb-24`}
-          keyboardShouldPersistTaps="handled"
-          ListEmptyComponent={
-            searchQuery ? (
-              <View style={tw`py-8 px-4 items-center`}>
-                <Text style={tw`text-lg text-center font-nokia-bold ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`}>
-                  No songs found for "{searchQuery}"
-                </Text>
-              </View>
-            ) : null
-          }
-        />
+          <FlatList
+            data={filteredSongs}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={renderSongItem}
+            showsVerticalScrollIndicator={false}
+            scrollEnabled={true}
+            bounces={true}
+            removeClippedSubviews={true}
+            contentContainerStyle={[tw`pb-24`, { paddingBottom: contentBottomPadding }]}
+            keyboardShouldPersistTaps="handled"
+            ListEmptyComponent={
+              searchQuery ? (
+                <View style={tw`py-8 px-4 items-center`}>
+                  <Text style={tw`text-lg text-center font-nokia-bold ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`}>
+                    No songs found for "{searchQuery}"
+                  </Text>
+                </View>
+              ) : null
+            }
+          />
+        </View>
       </SafeAreaView>
 
-      {/* Floating Numpad Button */}
-      <TouchableWithoutFeedback onPress={handleOpenNumpad}>
-        <View style={[
-          tw`absolute bottom-10 right-5 bg-accent-6 rounded-full p-4`,
-          getCardStyle()
-        ]}>
-          <HashtagIcon size={24} color="#FDFDFD" />
-        </View>
-      </TouchableWithoutFeedback>
+      {/* Floating Circular Numpad Button */}
+      <TouchableOpacity
+        onPress={handleOpenNumpad}
+        style={[
+          tw`absolute right-5 w-16 h-16 bg-accent-6 rounded-full items-center justify-center`,
+          { bottom: getFloatingButtonBottom() },
+          {
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+            elevation: 4,
+          },
+        ]}
+        activeOpacity={0.8}
+      >
+        <SolidHashtagIcon size={28} color="#FDFDFD" />
+      </TouchableOpacity>
 
-      <NumpadModal 
+      <NumpadModal
         visible={isNumpadVisible}
         onClose={handleCloseNumpad}
         onJumpToSong={handleJumpToSong}

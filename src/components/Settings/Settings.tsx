@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, Switch, ScrollView, SafeAreaView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, Switch, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, setFontSize, toggleDarkModeWithPersistence, AppDispatch } from '../../store';
@@ -7,12 +8,14 @@ import { Cog6ToothIcon, MusicalNoteIcon, BookOpenIcon, HeartIcon, ArrowPathIcon 
 import { getCardStyle } from '../../utils/platformUtils';
 import { hymnalService } from '../../services/hymnalService';
 import tw from '../../../tailwind';
+import { useBottomContentPadding } from '../../utils/platformUtils';
 
 const Settings = () => {
   const fontSize = useSelector((state: RootState) => state.fontSize.fontSize);
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
   const dispatch = useDispatch<AppDispatch>();
   const [isUpdating, setIsUpdating] = useState(false);
+  const contentBottomPadding = useBottomContentPadding(24);
 
   const handleToggleTheme = () => {
     dispatch(toggleDarkModeWithPersistence());
@@ -34,10 +37,11 @@ const Settings = () => {
   return (
     <View style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}>
       <SafeAreaView style={tw`flex-1`}>
-        <ScrollView 
+        <ScrollView
           showsVerticalScrollIndicator={false}
           scrollEnabled={true}
           bounces={true}
+          contentContainerStyle={[tw`pb-24` as any, { paddingBottom: contentBottomPadding }]}
         >
           <View style={tw`p-5`}>
             <View style={tw`flex-row items-center mb-8 pb-5 pt-8 border-b ${isDarkMode ? 'border-dark-primary-8' : 'border-primary-6'}`}>

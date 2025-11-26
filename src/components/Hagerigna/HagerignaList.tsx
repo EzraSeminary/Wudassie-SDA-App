@@ -5,12 +5,12 @@ import {
   View,
   TextInput,
   TouchableWithoutFeedback,
-  SafeAreaView,
   TouchableOpacity,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import { useTabBarHeight, useBottomContentPadding } from '../../utils/platformUtils';
 import {useSelector, useDispatch} from 'react-redux';
 import {RootState, AppDispatch} from '../../store';
 import {RootStackParamList} from '../../../App';
@@ -18,9 +18,10 @@ import {hymnalService, HagerignaHymn} from '../../services/hymnalService';
 import {loadFavorites, toggleFavorite} from '../../store/favoritesSlice';
 import NumpadModal from './../NumpadModal';
 import {getCardStyle} from '../../utils/platformUtils';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import tw from '../../../tailwind';
-import { MusicalNoteIcon, HashtagIcon, MagnifyingGlassIcon as OutlineSearchIcon } from 'react-native-heroicons/outline';
-import { HeartIcon as SolidHeartIcon, XMarkIcon as SolidXMarkIcon } from 'react-native-heroicons/solid';
+import { MusicalNoteIcon, MagnifyingGlassIcon as OutlineSearchIcon } from 'react-native-heroicons/outline';
+import { HeartIcon as SolidHeartIcon, XMarkIcon as SolidXMarkIcon, HashtagIcon as SolidHashtagIcon } from 'react-native-heroicons/solid';
 import { HeartIcon as OutlineHeartIcon } from 'react-native-heroicons/outline';
 import localHagerignaHymns from './HagerignaData.json';
 
@@ -28,6 +29,8 @@ import localHagerignaHymns from './HagerignaData.json';
 type SongListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'HagerignaList'>;
 
 const HagerignaList = () => {
+    const { getFloatingButtonBottom } = useTabBarHeight();
+    const contentBottomPadding = useBottomContentPadding(24);
     const [songs, setSongs] = useState<HagerignaHymn[]>([]);
     const [filteredSongs, setFilteredSongs] = useState<HagerignaHymn[]>([]);
     const [loading, setLoading] = useState(false);
@@ -189,7 +192,8 @@ const HagerignaList = () => {
   return (
     <View style={dynamicStyles.container}>
       <SafeAreaView style={tw`flex-1`}>
-        <View style={tw`flex-row items-center justify-between p-5 pb-4 pt-12`}>
+        {/* Fixed Header */}
+        <View style={tw`flex-row items-center justify-between px-5 py-4`}>
           <View style={tw`flex-row items-center flex-1`}>
             <MusicalNoteIcon size={28} color="#EA9215" />
             <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
@@ -198,62 +202,75 @@ const HagerignaList = () => {
           </View>
           <TouchableWithoutFeedback onPress={handleToggleSearch}>
             <View style={tw`p-2`}>
-                            {isSearchVisible ? 
-                                <SolidXMarkIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} /> :
-                                <OutlineSearchIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
-                            }
+              {isSearchVisible ?
+                <SolidXMarkIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} /> :
+                <OutlineSearchIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
+              }
             </View>
           </TouchableWithoutFeedback>
         </View>
 
-        {isSearchVisible && (
-          <View style={tw`px-5 pb-4`}>
-            <TextInput
-              style={[
-                tw`h-12 rounded-lg px-4 border-2 font-nokia-bold ${isDarkMode ? 'bg-dark-primary-8 border-dark-primary-6 text-dark-secondary-1' : 'bg-primary-3 border-primary-6 text-secondary-10'}`,
-                getCardStyle()
-              ]}
-                            placeholder="Search by title, artist or number..."
-              placeholderTextColor={isDarkMode ? '#9CA3AF' : '#6B7280'}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              autoFocus
-            />
-          </View>
-        )}
+        {/* Content */}
+        <View style={tw`flex-1`}>
+          {isSearchVisible && (
+            <View style={tw`px-5 pb-4`}>
+              <TextInput
+                style={[
+                  tw`h-12 rounded-lg px-4 border-2 font-nokia-bold ${isDarkMode ? 'bg-dark-primary-8 border-dark-primary-6 text-dark-secondary-1' : 'bg-primary-3 border-primary-6 text-secondary-10'}`,
+                  getCardStyle()
+                ]}
+                placeholder="Search by title, artist or number..."
+                placeholderTextColor={isDarkMode ? '#9CA3AF' : '#6B7280'}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoFocus
+              />
+            </View>
+          )}
 
-                {loading ? (
-                    <ActivityIndicator size="large" color={tw.color('accent-6')} style={tw`mt-10`} />
-                ) : error ? (
-                    <View style={tw`p-8 items-center`}><Text style={tw`text-lg font-nokia-bold text-center text-red-500`}>{error}</Text></View>
-                ) : (
-        <FlatList
-          data={filteredSongs}
-                        keyExtractor={(item) => item.id}
-          renderItem={renderSongItem}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={tw`pb-24`}
-          ListEmptyComponent={
-              <View style={tw`p-8 items-center`}>
-                <Text style={tw`text-lg font-nokia-bold text-center ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`}>
-                                    No songs found.
-                </Text>
-              </View>
-          }
-        />
-                )}
-
-        <TouchableWithoutFeedback onPress={handleOpenNumpad}>
-          <View style={[
-                        tw`absolute bottom-10 right-5 bg-accent-6 rounded-full p-4`,
-            getCardStyle()
-          ]}>
-            <HashtagIcon size={24} color="#FDFDFD" />
-          </View>
-        </TouchableWithoutFeedback>
+          {loading ? (
+              <ActivityIndicator size="large" color={tw.color('accent-6')} style={tw`mt-10`} />
+          ) : error ? (
+              <View style={tw`p-8 items-center`}><Text style={tw`text-lg font-nokia-bold text-center text-red-500`}>{error}</Text></View>
+          ) : (
+          <FlatList
+            data={filteredSongs}
+                            keyExtractor={(item) => item.id}
+            renderItem={renderSongItem}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[tw`pb-24` as any, { paddingBottom: contentBottomPadding }]}
+            ListEmptyComponent={
+                <View style={tw`p-8 items-center`}>
+                  <Text style={tw`text-lg font-nokia-bold text-center ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`}>
+                                      No songs found.
+                  </Text>
+                </View>
+            }
+          />
+          )}
+        </View>
       </SafeAreaView>
 
-      <NumpadModal 
+      {/* Floating Circular Numpad Button */}
+      <TouchableOpacity
+        onPress={handleOpenNumpad}
+        style={[
+          tw`absolute right-5 w-16 h-16 bg-accent-6 rounded-full items-center justify-center`,
+          { bottom: getFloatingButtonBottom() },
+          {
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+            elevation: 8,
+          },
+        ]}
+        activeOpacity={0.8}
+      >
+        <SolidHashtagIcon size={28} color="#FDFDFD" />
+      </TouchableOpacity>
+
+      <NumpadModal
         visible={isNumpadVisible}
         onClose={handleCloseNumpad}
         onJumpToSong={handleJumpToSong}

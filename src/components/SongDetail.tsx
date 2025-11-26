@@ -1,28 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableWithoutFeedback, ScrollView, Platform, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableWithoutFeedback, ScrollView, TouchableOpacity } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSelector, useDispatch } from 'react-redux';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RootState, AppDispatch } from '../store';
 import { RootStackParamList } from '../../App';
-import { ArrowLeftIcon, ArrowsPointingOutIcon, AdjustmentsHorizontalIcon, HashtagIcon } from 'react-native-heroicons/outline';
-import { HeartIcon as SolidHeartIcon } from 'react-native-heroicons/solid';
+import { ArrowLeftIcon, ArrowsPointingOutIcon, AdjustmentsHorizontalIcon } from 'react-native-heroicons/outline';
+import { HeartIcon as SolidHeartIcon, HashtagIcon as SolidHashtagIcon } from 'react-native-heroicons/solid';
 import { HeartIcon as OutlineHeartIcon } from 'react-native-heroicons/outline';
 import { loadFavorites, toggleFavorite } from '../store/favoritesSlice';
 import FontSizePopup from './CustomBottomSheet';
 import NumpadModal from './NumpadModal';
 import FullScreenVerse from './FullScreenVerse';
-import { getCardStyle } from '../utils/platformUtils';
 import tw from '../../tailwind';
 import hymnalData from './SDA_Hymnal.json';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
+import { useTabBarHeight, useBottomContentPadding } from '../utils/platformUtils';
 
 type SongDetailRouteProp = RouteProp<RootStackParamList, 'SongDetail'>;
 type SongDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SongDetail'>;
 
 const SongDetail = () => {
+  const { getFloatingButtonBottom } = useTabBarHeight();
+  const contentBottomPadding = useBottomContentPadding(2);
   const route = useRoute<SongDetailRouteProp>();
   const navigation = useNavigation<SongDetailNavigationProp>();
   const { song, songNumber } = route.params;
@@ -30,7 +32,7 @@ const SongDetail = () => {
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
   const { favoriteIds = [], isLoaded: favoritesLoaded = false } = useSelector((state: RootState) => state.favorites) || {};
   const dispatch: AppDispatch = useDispatch();
-  
+
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isFontSizePopupVisible, setIsFontSizePopupVisible] = useState(false);
   const [isNumpadVisible, setIsNumpadVisible] = useState(false);
@@ -44,6 +46,11 @@ const SongDetail = () => {
       dispatch(loadFavorites());
     }
   }, [dispatch, favoritesLoaded]);
+
+  // Ensure theme state is maintained when navigating
+  useEffect(() => {
+    console.log('SongDetail - Current theme:', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
 
   const handleOpenPopup = () => setIsFontSizePopupVisible(true);
   const handleClosePopup = () => setIsFontSizePopupVisible(false);
@@ -66,12 +73,14 @@ const SongDetail = () => {
     const songIndex = songNum - 1;
     const newTitle = hymnalData.resources.array[0].item[songIndex];
     const newLyrics = hymnalData.resources.array[2].item[songIndex];
-    
+    const englishTitle = hymnalData.resources.array[3].item[songIndex];
+
     const newSong = {
       title: newTitle,
+      englishTitle: englishTitle || '',
       lyrics: newLyrics,
     };
-    
+
     navigation.navigate('SongDetail', { song: newSong, songNumber: songNum });
   };
 
@@ -129,26 +138,21 @@ const SongDetail = () => {
   return (
     <GestureDetector gesture={panGesture}>
       <View style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}>
-        <SafeAreaView 
-          style={tw`flex-1`}
-          edges={Platform.select({
-            ios: ['top'],
-            android: ['top']
-          })}
-        >
-          <View style={[dynamicStyles.header, tw`pt-4`]}>
+        <SafeAreaView style={tw`flex-1`}>
+          {/* Fixed Header */}
+          <View style={[dynamicStyles.header]}>
             <TouchableWithoutFeedback onPress={handleBackPress}>
               <View style={tw`p-2`}>
                 <ArrowLeftIcon size={24} color="#EA9215" />
               </View>
             </TouchableWithoutFeedback>
-            
+
             <View style={tw`flex-row items-center flex-1 mx-3`}>
               <Text style={[dynamicStyles.title, tw`flex-1 font-nokia-bold`]} numberOfLines={2}>
                 {songNumber}. {song.title}
               </Text>
             </View>
-            
+
             {/* Favorite Button */}
             <TouchableOpacity onPress={handleToggleFavorite} style={tw`p-2 mr-2`}>
               {isFavorite ? (
@@ -157,36 +161,31 @@ const SongDetail = () => {
                 <OutlineHeartIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
               )}
             </TouchableOpacity>
-            
+
             {/* Fullscreen Button */}
             <TouchableWithoutFeedback onPress={() => setIsFullScreen(true)}>
               <View style={tw`p-2 mr-2`}>
                 <ArrowsPointingOutIcon size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
               </View>
             </TouchableWithoutFeedback>
-            
+
             <TouchableWithoutFeedback onPress={handleOpenPopup}>
               <View style={tw`p-2`}>
                 <AdjustmentsHorizontalIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
               </View>
             </TouchableWithoutFeedback>
           </View>
-          
-          <ScrollView 
+
+          {/* Content */}
+          <ScrollView
             style={tw`flex-1`}
             showsVerticalScrollIndicator={false}
             scrollEnabled={true}
             bounces={true}
-            contentContainerStyle={Platform.select({
-              ios: { 
-                padding: 20, 
-                paddingBottom: 120 
-              },
-              android: { 
-                padding: 20, 
-                paddingBottom: 120 
-              }
-            })}
+            contentContainerStyle={{
+              padding: 20,
+              paddingBottom: Math.max(120, contentBottomPadding),
+            }}
           >
             {song.lyrics.split('\\n').map((line, index) => (
               <Text key={index} style={dynamicStyles.lyrics}>
@@ -194,30 +193,26 @@ const SongDetail = () => {
               </Text>
             ))}
           </ScrollView>
-
-          {/* Floating Numpad Button */}
-          <TouchableWithoutFeedback onPress={handleOpenNumpad}>
-            <View style={[
-              tw`absolute right-5 bg-accent-6 rounded-full p-4 shadow-lg`,
-              Platform.select({
-                ios: {
-                  bottom: 40,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 4,
-                },
-                android: {
-                  bottom: 100,
-                  elevation: 8,
-                }
-              }),
-              getCardStyle()
-            ]}>
-              <HashtagIcon size={24} color="#FDFDFD" />
-            </View>
-          </TouchableWithoutFeedback>
         </SafeAreaView>
+
+        {/* Floating Circular Numpad Button */}
+        <TouchableOpacity
+          onPress={handleOpenNumpad}
+        style={[
+          tw`absolute right-5 w-16 h-16 bg-accent-6 rounded-full items-center justify-center`,
+          { bottom: getFloatingButtonBottom() },
+            {
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 8,
+            },
+          ]}
+          activeOpacity={0.8}
+        >
+          <SolidHashtagIcon size={28} color="#FDFDFD" />
+        </TouchableOpacity>
 
         {/* Full Screen Verse Component */}
         <FullScreenVerse
@@ -227,7 +222,7 @@ const SongDetail = () => {
         />
 
         <FontSizePopup visible={isFontSizePopupVisible} onClose={handleClosePopup} />
-        <NumpadModal 
+        <NumpadModal
           visible={isNumpadVisible}
           onClose={handleCloseNumpad}
           onJumpToSong={handleGoToSong}

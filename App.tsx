@@ -5,13 +5,13 @@
  * @format
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider, useSelector, useDispatch } from 'react-redux';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar, Platform } from 'react-native';
 import store, { RootState, loadTheme, AppDispatch } from './src/store';
 import SongList from './src/components/SongList';
@@ -21,6 +21,7 @@ import HagerignaDetail from './src/components/Hagerigna/HagerignaDetail';
 import Settings from './src/components/Settings/Settings';
 import MusicPlayer from './src/components/YoutubeLink/YouTubeLinks';
 import FavoritesList from './src/components/Favorites/FavoritesList';
+import SplashScreen from './src/components/SplashScreen';
 import { BookOpenIcon, MusicalNoteIcon, PlayIcon, Cog6ToothIcon, HeartIcon } from 'react-native-heroicons/outline';
 import { syncService } from './src/services/syncService';
 import NetInfo from '@react-native-community/netinfo';
@@ -102,20 +103,20 @@ const Tab = createBottomTabNavigator();
 
 const MainTabs = () => {
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
+  const insets = useSafeAreaInsets();
 
   // Memoize the tab bar style to prevent unnecessary re-renders
   const tabBarStyle = React.useMemo(() => ({
     backgroundColor: isDarkMode ? '#1A2024' : '#FDFDFD',
     borderTopColor: isDarkMode ? '#374151' : '#E5E7EB',
-    position: 'absolute' as 'absolute',
-    height: 85,
-    paddingBottom: 20,
-    paddingTop: 10,
+    height: 56 + insets.bottom,
+    paddingBottom: insets.bottom,
+    paddingTop: 7,
     elevation: 0,
     ...(Platform.OS === 'ios' && {
       shadowOpacity: 0,
     }),
-  }), [isDarkMode]);
+  }), [isDarkMode, insets.bottom]);
 
   const tabBarInactiveTintColor = React.useMemo(() => 
     isDarkMode ? '#9CA3AF' : '#6B7280', [isDarkMode]
@@ -138,7 +139,7 @@ const MainTabs = () => {
               IconComponent = MusicalNoteIcon;
           } else if (route.name === 'Favorites') {
             IconComponent = HeartIcon;
-            } else if (route.name === 'Music Player') {
+            } else if (route.name === 'Music') {
               IconComponent = PlayIcon;
             } else if (route.name === 'Settings') {
               IconComponent = Cog6ToothIcon;
@@ -158,7 +159,7 @@ const MainTabs = () => {
         <Tab.Screen name="Hymnals" component={SongStack} />
         <Tab.Screen name="Hagerigna" component={HagerignaStack} />
       <Tab.Screen name="Favorites" component={FavoritesStack} />
-        <Tab.Screen name="Music Player" component={MusicPlayer} />
+        <Tab.Screen name="Music" component={MusicPlayer} />
         <Tab.Screen name="Settings" component={Settings} />
       </Tab.Navigator>
   );
@@ -167,6 +168,7 @@ const MainTabs = () => {
 const AppContent = () => {
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
   const dispatch = useDispatch<AppDispatch>();
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     // Load saved theme when app starts
@@ -192,6 +194,10 @@ const AppContent = () => {
     console.log('Theme changed to:', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
 
+  const handleSplashFinish = () => {
+    setShowSplash(false);
+  };
+
   return (
     <>
       <StatusBar 
@@ -202,39 +208,43 @@ const AppContent = () => {
         })}
         translucent={Platform.OS === 'android'}
       />
-      <NavigationContainer
-        theme={{
-          dark: isDarkMode,
-          colors: {
-            primary: '#EA9215',
-            background: isDarkMode ? '#1A2024' : '#FDFDFD',
-            card: isDarkMode ? '#1A2024' : '#FDFDFD',
-            text: isDarkMode ? '#FDFDFD' : '#1A2024',
-            border: isDarkMode ? '#374151' : '#E5E7EB',
-            notification: '#EA9215',
-          },
-          fonts: {
-            regular: {
-              fontFamily: 'Nokia-Bold',
-              fontWeight: 'bold',
+      {showSplash ? (
+        <SplashScreen onFinish={handleSplashFinish} />
+      ) : (
+        <NavigationContainer
+          theme={{
+            dark: isDarkMode,
+            colors: {
+              primary: '#EA9215',
+              background: isDarkMode ? '#1A2024' : '#FDFDFD',
+              card: isDarkMode ? '#1A2024' : '#FDFDFD',
+              text: isDarkMode ? '#FDFDFD' : '#1A2024',
+              border: isDarkMode ? '#374151' : '#E5E7EB',
+              notification: '#EA9215',
             },
-            medium: {
-              fontFamily: 'Nokia-Bold',
-              fontWeight: 'bold',
+            fonts: {
+              regular: {
+                fontFamily: 'Nokia-Bold',
+                fontWeight: 'bold',
+              },
+              medium: {
+                fontFamily: 'Nokia-Bold',
+                fontWeight: 'bold',
+              },
+              bold: {
+                fontFamily: 'Nokia-Bold',
+                fontWeight: 'bold',
+              },
+              heavy: {
+                fontFamily: 'Nokia-Bold',
+                fontWeight: 'bold',
+              },
             },
-            light: {
-              fontFamily: 'Nokia-Bold',
-              fontWeight: 'bold',
-            },
-            thin: {
-              fontFamily: 'Nokia-Bold',
-              fontWeight: 'bold',
-            },
-          },
-        }}
-      >
-        <MainTabs key={isDarkMode ? 'dark' : 'light'} />
-      </NavigationContainer>
+          }}
+        >
+          <MainTabs key={isDarkMode ? 'dark' : 'light'} />
+        </NavigationContainer>
+      )}
       <Toast />
     </>
   );

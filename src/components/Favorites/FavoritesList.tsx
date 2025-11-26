@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
 import tw from '../../../tailwind';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HeartIcon as SolidHeartIcon } from 'react-native-heroicons/solid';
 import { MusicalNoteIcon } from 'react-native-heroicons/outline';
-import { getCardStyle } from '../../utils/platformUtils';
+import { getCardStyle, useBottomContentPadding } from '../../utils/platformUtils';
 
 import { hymnalService, HagerignaHymn } from '../../services/hymnalService';
 import { RootState, AppDispatch } from '../../store';
@@ -37,6 +38,7 @@ const FavoritesList = () => {
   const [error, setError] = useState<string | null>(null);
 
   const navigation = useNavigation<FavoritesListNavigationProp>();
+  const contentBottomPadding = useBottomContentPadding(24);
   const dispatch: AppDispatch = useDispatch();
 
   const { favoriteIds = [], isLoaded: favoritesLoaded = false } = useSelector((state: RootState) => state.favorites) || {};
@@ -249,7 +251,7 @@ const FavoritesList = () => {
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={tw`pb-4`}
+          contentContainerStyle={[tw`pb-24` as any, { paddingBottom: contentBottomPadding }]}
         />
       </SafeAreaView>
     </View>

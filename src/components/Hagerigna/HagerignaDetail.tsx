@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableWithoutFeedback, SafeAreaView, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableWithoutFeedback, TouchableOpacity } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
 import { RootStackParamList } from '../../../App';
-import { ArrowLeftIcon, ArrowsPointingOutIcon, AdjustmentsHorizontalIcon, HashtagIcon } from 'react-native-heroicons/outline';
-import { HeartIcon as SolidHeartIcon } from 'react-native-heroicons/solid';
+import { ArrowLeftIcon, ArrowsPointingOutIcon, AdjustmentsHorizontalIcon } from 'react-native-heroicons/outline';
+import { HeartIcon as SolidHeartIcon, HashtagIcon as SolidHashtagIcon } from 'react-native-heroicons/solid';
 import { HeartIcon as OutlineHeartIcon } from 'react-native-heroicons/outline';
 import FontSizePopup from './../CustomBottomSheet';
 import NumpadModal from './../NumpadModal';
 import FullScreenVerse from './../FullScreenVerse';
-import { getCardStyle } from '../../utils/platformUtils';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import tw from '../../../tailwind';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
@@ -19,11 +19,14 @@ import hagerignaData from './HagerignaData.json';
 import { HagerignaHymn } from '../../services/hymnalService';
 import { loadFavorites, toggleFavorite } from '../../store/favoritesSlice';
 import Orientation from 'react-native-orientation-locker';
+import { useTabBarHeight, useBottomContentPadding } from '../../utils/platformUtils';
 
 type SongDetailRouteProp = RouteProp<RootStackParamList, 'HagerignaDetail'>;
 type HagerignaDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'HagerignaDetail'>;
 
 const HagerignaDetail = () => {
+  const { getFloatingButtonBottom } = useTabBarHeight();
+  const contentBottomPadding = useBottomContentPadding(24);
   const route = useRoute<SongDetailRouteProp>();
   const navigation = useNavigation<HagerignaDetailNavigationProp>();
   const { song: initialSong, songNumber } = route.params;
@@ -48,6 +51,11 @@ const HagerignaDetail = () => {
       dispatch(loadFavorites());
     }
   }, [dispatch, favoritesLoaded]);
+
+  // Ensure theme state is maintained when navigating
+  useEffect(() => {
+    console.log('HagerignaDetail - Current theme:', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
 
   useEffect(() => {
     setSong(initialSong);
@@ -75,12 +83,13 @@ const HagerignaDetail = () => {
     const newSongIndex = songNum - 1;
     if (newSongIndex < 0 || newSongIndex >= totalSongs) return;
 
+    setNumpadVisible(false);
     const newTitle = hagerignaData.resources.array[2].item[newSongIndex];
     const newArtist = hagerignaData.resources.array[0].item[newSongIndex];
     const newLyrics = hagerignaData.resources.array[1].item[newSongIndex];
-    
+
     const newSongData: HagerignaHymn = {
-      id: `hagerigna-${newSongIndex}`,
+      id: `hagerigna-${newSongIndex + 1}`,
       title: newTitle,
       song: newLyrics,
       artist: newArtist,
@@ -123,7 +132,7 @@ const HagerignaDetail = () => {
     .simultaneousWithExternalGesture();
 
   const dynamicStyles = {
-    container: tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'} pt-12`,
+    container: tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`,
     title: [
       tw`font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
       { fontSize: fontSize + 6, lineHeight: 32 }
@@ -148,13 +157,14 @@ const HagerignaDetail = () => {
     <GestureDetector gesture={panGesture}>
       <View style={dynamicStyles.container}>
         <SafeAreaView style={tw`flex-1`}>
-          <View style={dynamicStyles.header}>
+          {/* Fixed Header */}
+          <View style={[dynamicStyles.header]}>
             <TouchableWithoutFeedback onPress={handleBackPress}>
               <View style={tw`p-2`}>
                 <ArrowLeftIcon size={24} color="#EA9215" />
               </View>
             </TouchableWithoutFeedback>
-            
+
             <View style={tw`flex-row items-center flex-1 mx-3`}>
               <View style={tw`flex-1`}>
                 <Text style={[ tw`font-nokia-bold text-3xl ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`]} numberOfLines={2}>
@@ -167,7 +177,7 @@ const HagerignaDetail = () => {
                 )}
               </View>
             </View>
-            
+
             <TouchableOpacity onPress={handleToggleFavorite} style={tw`p-2`}>
               {favoriteIds.includes(song.id) ? (
                 <SolidHeartIcon size={24} color={tw.color('red-500')} />
@@ -175,13 +185,13 @@ const HagerignaDetail = () => {
                 <OutlineHeartIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
               )}
             </TouchableOpacity>
-            
+
             <TouchableWithoutFeedback onPress={() => setIsFullScreen(true)}>
               <View style={tw`p-2 mr-2`}>
                 <ArrowsPointingOutIcon size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
               </View>
             </TouchableWithoutFeedback>
-            
+
             <TouchableWithoutFeedback onPress={handleOpenPopup}>
               <View style={tw`p-2`}>
                 <AdjustmentsHorizontalIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
@@ -189,11 +199,13 @@ const HagerignaDetail = () => {
             </TouchableWithoutFeedback>
           </View>
 
-          <ScrollView 
+          {/* Content */}
+          <ScrollView
             style={tw`flex-1`}
             showsVerticalScrollIndicator={false}
             scrollEnabled={true}
             bounces={true}
+            contentContainerStyle={{ paddingBottom: contentBottomPadding }}
           >
             <View style={tw`p-5`}>
               {song.song.split('\\n').map((line: string, index: number) => (
@@ -203,19 +215,29 @@ const HagerignaDetail = () => {
               ))}
             </View>
           </ScrollView>
-
-          <TouchableWithoutFeedback onPress={handleOpenNumpad}>
-            <View style={[
-              tw`absolute bottom-10 right-5 bg-accent-6 rounded-full p-4`,
-              getCardStyle()
-            ]}>
-              <HashtagIcon size={24} color="#FDFDFD" />
-            </View>
-          </TouchableWithoutFeedback>
         </SafeAreaView>
 
+        {/* Floating Circular Numpad Button */}
+        <TouchableOpacity
+          onPress={handleOpenNumpad}
+        style={[
+          tw`absolute right-5 w-16 h-16 bg-accent-6 rounded-full items-center justify-center`,
+          { bottom: getFloatingButtonBottom() },
+            {
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 8,
+            },
+          ]}
+          activeOpacity={0.8}
+        >
+          <SolidHashtagIcon size={28} color="#FDFDFD" />
+        </TouchableOpacity>
+
         <FontSizePopup visible={isPopupVisible} onClose={handleClosePopup} />
-        <NumpadModal 
+        <NumpadModal
           visible={isNumpadVisible}
           onClose={handleCloseNumpad}
           onJumpToSong={handleJumpToSong}

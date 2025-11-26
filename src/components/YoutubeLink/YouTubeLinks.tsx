@@ -1,13 +1,15 @@
 import React from 'react';
-import { View, Text, TouchableWithoutFeedback, ScrollView, SafeAreaView } from 'react-native';
+import { View, Text, TouchableWithoutFeedback, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { MusicalNoteIcon, PlayIcon, BackwardIcon, ForwardIcon, SpeakerWaveIcon } from 'react-native-heroicons/outline';
-import { getCardStyle } from '../../utils/platformUtils';
+import { getCardStyle, useBottomContentPadding } from '../../utils/platformUtils';
 import tw from '../../../tailwind';
 
 const MusicPlayer = () => {
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
+  const contentBottomPadding = useBottomContentPadding(24);
 
   const dynamicStyles = {
     container: tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`,
@@ -27,10 +29,11 @@ const MusicPlayer = () => {
   return (
     <View style={dynamicStyles.container}>
       <SafeAreaView style={tw`flex-1`}>
-        <ScrollView 
+        <ScrollView
           showsVerticalScrollIndicator={false}
           scrollEnabled={true}
           bounces={true}
+          contentContainerStyle={[tw`pb-24` as any, { paddingBottom: contentBottomPadding }]}
         >
           <View style={tw`p-5`}>
             <View style={tw`flex-row items-center mb-8 pt-8`}>
