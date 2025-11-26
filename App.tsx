@@ -14,6 +14,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar, Platform } from 'react-native';
 import store, { RootState, loadTheme, AppDispatch } from './src/store';
+import { getNokiaFontName } from './src/utils/platformUtils';
 import SongList from './src/components/SongList';
 import SongDetail from './src/components/SongDetail';
 import HagerignaList from './src/components/Hagerigna/HagerignaList';
@@ -224,20 +225,20 @@ const AppContent = () => {
             },
             fonts: {
               regular: {
-                fontFamily: 'Nokia-Bold',
-                fontWeight: 'bold',
+                fontFamily: getNokiaFontName('bold'),
+                fontWeight: 'bold' as const,
               },
               medium: {
-                fontFamily: 'Nokia-Bold',
-                fontWeight: 'bold',
+                fontFamily: getNokiaFontName('bold'),
+                fontWeight: 'bold' as const,
               },
               bold: {
-                fontFamily: 'Nokia-Bold',
-                fontWeight: 'bold',
+                fontFamily: getNokiaFontName('bold'),
+                fontWeight: 'bold' as const,
               },
               heavy: {
-                fontFamily: 'Nokia-Bold',
-                fontWeight: 'bold',
+                fontFamily: getNokiaFontName('bold'),
+                fontWeight: 'bold' as const,
               },
             },
           }}

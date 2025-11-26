@@ -4,22 +4,25 @@ import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
 import { RootStackParamList } from '../../../App';
-import { ArrowLeftIcon, ArrowsPointingOutIcon, AdjustmentsHorizontalIcon, ArrowUpTrayIcon } from 'react-native-heroicons/outline';
+import { ArrowLeftIcon, ArrowsPointingOutIcon, EllipsisVerticalIcon, ArrowUpTrayIcon } from 'react-native-heroicons/outline';
 import { HeartIcon as SolidHeartIcon, HashtagIcon as SolidHashtagIcon } from 'react-native-heroicons/solid';
 import { HeartIcon as OutlineHeartIcon } from 'react-native-heroicons/outline';
 import FontSizePopup from './../CustomBottomSheet';
 import NumpadModal from './../NumpadModal';
 import FullScreenVerse from './../FullScreenVerse';
+import MoreMenu from './../MoreMenu';
+import SheetMusicViewer from './../SheetMusicViewer';
+import AudioPlayer from './../AudioPlayer';
+import { hymnalService, HagerignaHymn } from '../../services/hymnalService';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import tw from '../../../tailwind';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import hagerignaData from './HagerignaData.json';
-import { HagerignaHymn } from '../../services/hymnalService';
 import { loadFavorites, toggleFavorite } from '../../store/favoritesSlice';
 import Orientation from 'react-native-orientation-locker';
-import { useTabBarHeight, useBottomContentPadding } from '../../utils/platformUtils';
+import { useTabBarHeight, useBottomContentPadding, getDefaultFontStyle } from '../../utils/platformUtils';
 
 type SongDetailRouteProp = RouteProp<RootStackParamList, 'HagerignaDetail'>;
 type HagerignaDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'HagerignaDetail'>;
@@ -40,12 +43,25 @@ const HagerignaDetail = () => {
   const [isPopupVisible, setPopupVisible] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isNumpadVisible, setNumpadVisible] = useState(false);
+  const [isMoreMenuVisible, setIsMoreMenuVisible] = useState(false);
+  const [isSheetMusicVisible, setIsSheetMusicVisible] = useState(false);
+  const [isAudioVisible, setIsAudioVisible] = useState(false);
   const [song, setSong] = useState<HagerignaHymn>(initialSong);
+  const [fullSongData, setFullSongData] = useState<HagerignaHymn | null>(null);
 
   const handleOpenPopup = () => setPopupVisible(true);
   const handleClosePopup = () => setPopupVisible(false);
   const handleOpenNumpad = () => setNumpadVisible(true);
   const handleCloseNumpad = () => setNumpadVisible(false);
+  const handleOpenMoreMenu = () => setIsMoreMenuVisible(true);
+  const handleCloseMoreMenu = () => setIsMoreMenuVisible(false);
+  const handleOpenSheetMusic = () => setIsSheetMusicVisible(true);
+  const handleCloseSheetMusic = () => setIsSheetMusicVisible(false);
+  const handleOpenAudio = () => setIsAudioVisible(true);
+  const handleCloseAudio = () => setIsAudioVisible(false);
+
+  const hasSheetMusic = fullSongData?.sheet_music && fullSongData.sheet_music.length > 0;
+  const hasAudio = !!fullSongData?.audio;
 
   useEffect(() => {
     if (!favoritesLoaded) {
@@ -61,6 +77,30 @@ const HagerignaDetail = () => {
   useEffect(() => {
     setSong(initialSong);
   }, [initialSong]);
+
+  // Fetch full song data from API to get sheet_music and audio
+  useEffect(() => {
+    const fetchFullSongData = async () => {
+      try {
+        const allSongs = await hymnalService.getHagerignaHymns();
+        const foundSong = allSongs.find((s: HagerignaHymn) => s.id === song.id);
+        if (foundSong) {
+          setFullSongData(foundSong);
+        } else {
+          // If not found by ID, try to find by title
+          const foundByTitle = allSongs.find((s: HagerignaHymn) => s.title === song.title);
+          if (foundByTitle) {
+            setFullSongData(foundByTitle);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching full song data:', error);
+      }
+    };
+    if (song.id) {
+      fetchFullSongData();
+    }
+  }, [song.id, song.title]);
 
   useEffect(() => {
     // Lock to portrait when not in fullscreen
@@ -103,7 +143,7 @@ const HagerignaDetail = () => {
   const totalSongs = hagerignaData.resources.array[2].item.length;
 
   const handleBackPress = () => {
-    navigation.navigate('HagerignaList');
+    navigation.goBack();
   };
 
   const handleJumpToSong = (songNum: number) => {
@@ -162,11 +202,16 @@ const HagerignaDetail = () => {
     container: tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`,
     title: [
       tw`font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
+      getDefaultFontStyle('bold'),
       { fontSize: fontSize + 6, lineHeight: 32 }
     ],
-    artist: tw`font-nokia-bold text-accent-6 text-sm`,
+    artist: [
+      tw`font-nokia-bold text-accent-6 text-sm`,
+      getDefaultFontStyle('bold'),
+    ],
     lyrics: [
       tw`font-nokia-bold mb-2 ${isDarkMode ? 'text-primary-6' : 'text-secondary-6'}`,
+      getDefaultFontStyle('bold'),
       { fontSize, lineHeight: 28 }
     ],
     header: tw`flex-row justify-between items-center px-5 pb-5 border-b font-nokia-bold ${isDarkMode ? 'border-dark-primary-8' : 'border-primary-6'}`
@@ -224,9 +269,9 @@ const HagerignaDetail = () => {
               </View>
             </TouchableWithoutFeedback>
 
-            <TouchableWithoutFeedback onPress={handleOpenPopup}>
+            <TouchableWithoutFeedback onPress={handleOpenMoreMenu}>
               <View style={tw`p-2`}>
-                <AdjustmentsHorizontalIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+                <EllipsisVerticalIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
               </View>
             </TouchableWithoutFeedback>
           </View>
@@ -276,6 +321,31 @@ const HagerignaDetail = () => {
           maxSongs={totalSongs}
           title="Hagerigna"
         />
+        <MoreMenu
+          visible={isMoreMenuVisible}
+          onClose={handleCloseMoreMenu}
+          onFontSize={handleOpenPopup}
+          onSheetMusic={handleOpenSheetMusic}
+          onAudio={handleOpenAudio}
+          hasSheetMusic={hasSheetMusic}
+          hasAudio={hasAudio}
+        />
+        {hasSheetMusic && fullSongData?.sheet_music && (
+          <SheetMusicViewer
+            visible={isSheetMusicVisible}
+            onClose={handleCloseSheetMusic}
+            images={fullSongData.sheet_music}
+            title={song.title}
+          />
+        )}
+        {hasAudio && fullSongData?.audio && (
+          <AudioPlayer
+            visible={isAudioVisible}
+            onClose={handleCloseAudio}
+            audioUrl={fullSongData.audio}
+            title={song.title}
+          />
+        )}
 
         <FullScreenVerse
           song={{

@@ -6,6 +6,9 @@ export interface HagerignaHymn {
   title: string;
   song: string;
   artist?: string;
+  sheet_music?: string[];
+  audio?: string;
+  category?: string;
 }
 
 export interface SDAHymn {
@@ -13,6 +16,14 @@ export interface SDAHymn {
   title: string;
   lyrics: string;
   number: number;
+  newHymnalTitle?: string;
+  oldHymnalTitle?: string;
+  newHymnalLyrics?: string;
+  englishTitleOld?: string;
+  oldHymnalLyrics?: string;
+  sheet_music?: string[];
+  audio?: string;
+  category?: string;
 }
 
 export type HymnalType = 'hagerigna' | 'sda';

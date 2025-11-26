@@ -76,3 +76,52 @@ export const useBottomContentPadding = (minExtra: number = 24) => {
   const { tabBarHeight } = useTabBarHeight();
   return useMemo(() => tabBarHeight + minExtra, [tabBarHeight, minExtra]);
 };
+
+/**
+ * Get the correct Nokia font name based on platform and weight
+ * This ensures fonts are properly loaded and prevents fallback to system fonts
+ */
+export const getNokiaFontName = (weight: 'bold' | 'regular' | 'light' | 'ultraLight' | 'extraBold' = 'bold'): string => {
+  if (Platform.OS === 'ios') {
+    switch (weight) {
+      case 'bold':
+        return 'Nokia Pure Headline Bold';
+      case 'regular':
+        return 'Nokia Pure Headline Regular';
+      case 'light':
+        return 'Nokia Pure Headline Light';
+      case 'ultraLight':
+        return 'Nokia Pure Headline Ultra Light';
+      case 'extraBold':
+        return 'Nokia Pure Headline Bold'; // Fallback to bold if extraBold not available
+      default:
+        return 'Nokia Pure Headline Bold';
+    }
+  } else {
+    // Android font names (must match the actual font file names)
+    switch (weight) {
+      case 'bold':
+        return 'NokiaPureHeadline-Bold';
+      case 'regular':
+        return 'NOKIAPUREHEADLINE_RG';
+      case 'light':
+        return 'NokiaPureHeadline_Lt';
+      case 'ultraLight':
+        return 'NokiaPureHeadline-UltraLight';
+      case 'extraBold':
+        return 'NokiaPureHeadline_XBd';
+      default:
+        return 'NokiaPureHeadline-Bold';
+    }
+  }
+};
+
+/**
+ * Get default font family style object to force Nokia font
+ * Use this to ensure text always uses Nokia font and doesn't fall back to system fonts
+ */
+export const getDefaultFontStyle = (weight: 'bold' | 'regular' | 'light' | 'ultraLight' | 'extraBold' = 'bold') => {
+  return {
+    fontFamily: getNokiaFontName(weight),
+  };
+};

@@ -1,23 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableWithoutFeedback, ScrollView, TouchableOpacity, Share, Platform } from 'react-native';
+import { View, Text, TouchableWithoutFeedback, ScrollView, TouchableOpacity, Share } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSelector, useDispatch } from 'react-redux';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootState, AppDispatch } from '../store';
 import { RootStackParamList } from '../../App';
-import { ArrowLeftIcon, ArrowsPointingOutIcon, AdjustmentsHorizontalIcon, ArrowUpTrayIcon } from 'react-native-heroicons/outline';
+import { ArrowLeftIcon, ArrowsPointingOutIcon, EllipsisVerticalIcon, ArrowUpTrayIcon } from 'react-native-heroicons/outline';
 import { HeartIcon as SolidHeartIcon, HashtagIcon as SolidHashtagIcon } from 'react-native-heroicons/solid';
 import { HeartIcon as OutlineHeartIcon } from 'react-native-heroicons/outline';
 import { loadFavorites, toggleFavorite } from '../store/favoritesSlice';
 import FontSizePopup from './CustomBottomSheet';
 import NumpadModal from './NumpadModal';
 import FullScreenVerse from './FullScreenVerse';
+import MoreMenu from './MoreMenu';
+import SheetMusicViewer from './SheetMusicViewer';
+import AudioPlayer from './AudioPlayer';
+import { hymnalService, SDAHymn } from '../services/hymnalService';
 import tw from '../../tailwind';
 import hymnalData from './SDA_Hymnal.json';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
-import { useTabBarHeight, useBottomContentPadding } from '../utils/platformUtils';
+import { useTabBarHeight, useBottomContentPadding, getDefaultFontStyle } from '../utils/platformUtils';
 
 type SongDetailRouteProp = RouteProp<RootStackParamList, 'SongDetail'>;
 type SongDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SongDetail'>;
@@ -37,6 +41,10 @@ const SongDetail = () => {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isFontSizePopupVisible, setIsFontSizePopupVisible] = useState(false);
   const [isNumpadVisible, setIsNumpadVisible] = useState(false);
+  const [isMoreMenuVisible, setIsMoreMenuVisible] = useState(false);
+  const [isSheetMusicVisible, setIsSheetMusicVisible] = useState(false);
+  const [isAudioVisible, setIsAudioVisible] = useState(false);
+  const [fullSongData, setFullSongData] = useState<SDAHymn | null>(null);
 
   // Generate consistent ID for hymnal songs
   const hymnalSongId = `hymnal-${songNumber}`;
@@ -48,6 +56,24 @@ const SongDetail = () => {
     }
   }, [dispatch, favoritesLoaded]);
 
+  // Fetch full song data from API to get sheet_music and audio
+  useEffect(() => {
+    const fetchFullSongData = async () => {
+      try {
+        const allSongs = await hymnalService.getSDAHymns();
+        const foundSong = allSongs.find((s: SDAHymn) => 
+          s.newHymnalTitle === song.title || s.title === song.title
+        );
+        if (foundSong) {
+          setFullSongData(foundSong);
+        }
+      } catch (error) {
+        console.error('Error fetching full song data:', error);
+      }
+    };
+    fetchFullSongData();
+  }, [song.title]);
+
   // Ensure theme state is maintained when navigating
   useEffect(() => {
     console.log('SongDetail - Current theme:', isDarkMode ? 'dark' : 'light');
@@ -57,6 +83,15 @@ const SongDetail = () => {
   const handleClosePopup = () => setIsFontSizePopupVisible(false);
   const handleOpenNumpad = () => setIsNumpadVisible(true);
   const handleCloseNumpad = () => setIsNumpadVisible(false);
+  const handleOpenMoreMenu = () => setIsMoreMenuVisible(true);
+  const handleCloseMoreMenu = () => setIsMoreMenuVisible(false);
+  const handleOpenSheetMusic = () => setIsSheetMusicVisible(true);
+  const handleCloseSheetMusic = () => setIsSheetMusicVisible(false);
+  const handleOpenAudio = () => setIsAudioVisible(true);
+  const handleCloseAudio = () => setIsAudioVisible(false);
+
+  const hasSheetMusic = fullSongData?.sheet_music && fullSongData.sheet_music.length > 0;
+  const hasAudio = !!fullSongData?.audio;
 
   const handleToggleFavorite = () => {
     dispatch(toggleFavorite(hymnalSongId, song.title));
@@ -90,7 +125,7 @@ const SongDetail = () => {
   const totalSongs = hymnalData.resources.array[0].item.length;
 
   const handleBackPress = () => {
-    navigation.navigate('SongList');
+    navigation.goBack();
   };
 
   const handleGoToSong = (songNum: number) => {
@@ -145,6 +180,7 @@ const SongDetail = () => {
     container: tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`,
     title: [
       tw`font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
+      getDefaultFontStyle('bold'),
       { 
         fontSize: fontSize + 6,
         lineHeight: 32
@@ -152,6 +188,7 @@ const SongDetail = () => {
     ],
     lyrics: [
       tw`font-nokia-bold mb-2 ${isDarkMode ? 'text-primary-6' : 'text-secondary-6'}`,
+      getDefaultFontStyle('bold'),
       { 
         fontSize,
         lineHeight: 28
@@ -199,9 +236,9 @@ const SongDetail = () => {
               </View>
             </TouchableWithoutFeedback>
 
-            <TouchableWithoutFeedback onPress={handleOpenPopup}>
+            <TouchableWithoutFeedback onPress={handleOpenMoreMenu}>
               <View style={tw`p-2`}>
-                <AdjustmentsHorizontalIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+                <EllipsisVerticalIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
               </View>
             </TouchableWithoutFeedback>
           </View>
@@ -259,6 +296,31 @@ const SongDetail = () => {
           maxSongs={totalSongs}
           title="Hymnal"
         />
+        <MoreMenu
+          visible={isMoreMenuVisible}
+          onClose={handleCloseMoreMenu}
+          onFontSize={handleOpenPopup}
+          onSheetMusic={handleOpenSheetMusic}
+          onAudio={handleOpenAudio}
+          hasSheetMusic={hasSheetMusic}
+          hasAudio={hasAudio}
+        />
+        {hasSheetMusic && fullSongData?.sheet_music && (
+          <SheetMusicViewer
+            visible={isSheetMusicVisible}
+            onClose={handleCloseSheetMusic}
+            images={fullSongData.sheet_music}
+            title={song.title}
+          />
+        )}
+        {hasAudio && fullSongData?.audio && (
+          <AudioPlayer
+            visible={isAudioVisible}
+            onClose={handleCloseAudio}
+            audioUrl={fullSongData.audio}
+            title={song.title}
+          />
+        )}
       </View>
     </GestureDetector>
   );

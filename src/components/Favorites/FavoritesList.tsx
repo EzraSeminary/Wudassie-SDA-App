@@ -132,7 +132,7 @@ const FavoritesList = () => {
     songTitle: tw`text-lg font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
     artistName: tw`text-sm font-nokia-bold ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`,
     emptyText: tw`text-center font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
-    header: tw`flex-row items-center p-5 border-b ${isDarkMode ? 'border-dark-primary-8' : 'border-primary-6'}`,
+    header: tw`flex-row items-center px-5 pb-2 border-b ${isDarkMode ? 'border-dark-primary-8' : 'border-primary-6'}`,
     toggleButton: tw`flex-1 py-3 px-4 mx-2 rounded-lg ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
     toggleButtonActive: tw`flex-1 py-3 px-4 mx-2 rounded-lg bg-accent-6`,
     toggleButtonText: tw`text-center font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
@@ -188,7 +188,7 @@ const FavoritesList = () => {
     return (
       <View style={dynamicStyles.container}>
         <SafeAreaView style={tw`flex-1`}>
-          <View style={[dynamicStyles.header, tw`pt-8`]}>
+          <View style={dynamicStyles.header}>
             <MusicalNoteIcon size={28} color="#EA9215" />
             <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
               Favorite Songs
