@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -42,14 +42,16 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     }
   };
 
-  if (!visible) return null;
+  if (!visible) {
+    return null;
+  }
 
   return (
     <Modal
       visible={visible}
       animationType="slide"
       transparent={true}
-      onRequestClose={handleClose}
+      onRequestClose={onClose}
     >
       <View style={tw`flex-1 justify-end bg-black bg-opacity-50`}>
         <View
@@ -78,7 +80,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
                 Audio Player
               </Text>
             </View>
-            <TouchableOpacity onPress={handleClose} style={tw`p-2`}>
+            <TouchableOpacity onPress={onClose} style={tw`p-2`}>
               <XMarkIcon
                 size={24}
                 color={isDarkMode ? '#FDFDFD' : '#1A2024'}
@@ -129,4 +131,3 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 };
 
 export default AudioPlayer;
-

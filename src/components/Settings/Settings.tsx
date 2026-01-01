@@ -154,6 +154,16 @@ const Settings = () => {
                 </Text>
               </View>
             </View>
+
+            {/* Version and Credits Section */}
+            <View style={tw`items-center mb-6 mt-2`}>
+              <Text style={tw`text-sm opacity-60 ${isDarkMode ? 'text-dark-secondary-3' : 'text-secondary-8'}`}>
+                Version 0.0.1
+              </Text>
+              <Text style={tw`text-sm opacity-60 mt-2 ${isDarkMode ? 'text-dark-secondary-3' : 'text-secondary-8'}`}>
+                Prepared by Yetnbit-Kal Ministry
+              </Text>
+            </View>
           </View>
         </ScrollView>
       </SafeAreaView>
