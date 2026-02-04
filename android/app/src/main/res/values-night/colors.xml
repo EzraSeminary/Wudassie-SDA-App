@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark (night) theme colors -->
+    <color name="app_background">#1A2024</color>
+    <color name="status_bar">#1A2024</color>
+    <color name="navigation_bar">#1A2024</color>
+</resources>

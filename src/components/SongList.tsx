@@ -192,7 +192,7 @@ const SongList = () => {
             scrollEnabled={true}
             bounces={true}
             removeClippedSubviews={true}
-            contentContainerStyle={[tw`pb-24`, { paddingBottom: contentBottomPadding }]}
+            contentContainerStyle={[{ paddingBottom: Math.max(getFloatingButtonBottom(), 24) }]}
             keyboardShouldPersistTaps="handled"
             ListEmptyComponent={
               searchQuery ? (

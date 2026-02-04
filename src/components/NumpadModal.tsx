@@ -105,7 +105,7 @@ const NumpadModal: React.FC<NumpadModalProps> = ({
       backdropComponent={renderBackdrop}
       backgroundStyle={tw`${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-1'}`}
       handleIndicatorStyle={tw`w-12 h-1.5 rounded-full ${isDarkMode ? 'bg-dark-primary-6' : 'bg-primary-6'}`}
-      bottomInset={insets.bottom}
+      bottomInset={0}
     >
       <BottomSheetView style={tw`flex-1 px-5`}>
         {/* Header */}
@@ -227,8 +227,7 @@ const NumpadModal: React.FC<NumpadModalProps> = ({
           </TouchableOpacity>
         </View>
         
-        {/* Safe area padding */}
-        <View style={{ height: insets.bottom }} />
+        {/* no extra spacer here — BottomSheet bottomInset is set to 0 so sheet sits flush */}
       </BottomSheetView>
     </BottomSheet>
   );

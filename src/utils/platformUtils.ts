@@ -40,8 +40,9 @@ export const getCardStyle = () => ({
 
 // Custom hook to get consistent tab bar height across all screens
 export const useTabBarHeight = () => {
-  const [tabBarHeight, setTabBarHeight] = useState(85); // Default height from App.tsx
   const insets = useSafeAreaInsets();
+  const defaultHeight = 56 + insets.bottom; // match App.tsx tabBarStyle height
+  const [tabBarHeight, setTabBarHeight] = useState(defaultHeight);
 
   // Always call the hook - it will work when available
   const navTabBarHeight = useBottomTabBarHeight();
@@ -52,7 +53,7 @@ export const useTabBarHeight = () => {
       setTabBarHeight(navTabBarHeight);
     } else {
       // Fallback to configured height from App.tsx
-      setTabBarHeight(85);
+      setTabBarHeight(defaultHeight);
     }
   }, [navTabBarHeight]);
 
