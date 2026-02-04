@@ -82,38 +82,26 @@ export const useBottomContentPadding = (minExtra: number = 24) => {
  * This ensures fonts are properly loaded and prevents fallback to system fonts
  */
 export const getNokiaFontName = (weight: 'bold' | 'regular' | 'light' | 'ultraLight' | 'extraBold' = 'bold'): string => {
-  if (Platform.OS === 'ios') {
-    switch (weight) {
-      case 'bold':
-        return 'Nokia Pure Headline Bold';
-      case 'regular':
-        return 'Nokia Pure Headline Regular';
-      case 'light':
-        return 'Nokia Pure Headline Light';
-      case 'ultraLight':
-        return 'Nokia Pure Headline Ultra Light';
-      case 'extraBold':
-        return 'Nokia Pure Headline Bold'; // Fallback to bold if extraBold not available
-      default:
-        return 'Nokia Pure Headline Bold';
-    }
-  } else {
-    // Android font names (must match the actual font file names)
-    switch (weight) {
-      case 'bold':
-        return 'NokiaPureHeadline-Bold';
-      case 'regular':
-        return 'NOKIAPUREHEADLINE_RG';
-      case 'light':
-        return 'NokiaPureHeadline_Lt';
-      case 'ultraLight':
-        return 'NokiaPureHeadline-UltraLight';
-      case 'extraBold':
-        return 'NokiaPureHeadline_XBd';
-      default:
-        return 'NokiaPureHeadline-Bold';
-    }
-  }
+  // Return platform-specific font identifiers.
+  // - Android: use the exact asset filename (without extension) present under android/app/src/main/assets/fonts
+  // - iOS: prefer the readable font name that iOS expects (PostScript / display name)
+  const androidMap: Record<string, string> = {
+    regular: 'NOKIAPUREHEADLINE_RG',
+    bold: 'Nokia Pure Headline Bold',
+    light: 'NokiaPureHeadline_Lt',
+    ultraLight: 'Nokia Pure Headline Ultra Light',
+    extraBold: 'Nokia Pure Headline Bold',
+  };
+
+  const iosMap: Record<string, string> = {
+    regular: 'Nokia Pure Headline',
+    bold: 'Nokia Pure Headline Bold',
+    light: 'Nokia Pure Headline Lt',
+    ultraLight: 'Nokia Pure Headline Ultra Light',
+    extraBold: 'Nokia Pure Headline Bold',
+  };
+
+  return isAndroid ? androidMap[weight] || androidMap.bold : iosMap[weight] || iosMap.bold;
 };
 
 /**

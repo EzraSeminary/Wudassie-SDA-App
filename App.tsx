@@ -12,7 +12,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider, useSelector, useDispatch } from 'react-redux';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar, Platform } from 'react-native';
+import { StatusBar, Platform, Text, TextInput } from 'react-native';
 import store, { RootState, loadTheme, AppDispatch } from './src/store';
 import { getNokiaFontName } from './src/utils/platformUtils';
 import SongList from './src/components/SongList';
@@ -28,6 +28,16 @@ import { syncService } from './src/services/syncService';
 import NetInfo from '@react-native-community/netinfo';
 import { HagerignaHymn } from './src/services/hymnalService';
 import Toast from 'react-native-toast-message';
+import FontDebug from './src/components/FontDebug';
+
+// Force global default Nokia font for all Text and TextInput components
+const _defaultNokiaFont = getNokiaFontName('regular');
+if ((Text as any).defaultProps == null) (Text as any).defaultProps = {};
+if ((Text as any).defaultProps.style == null) (Text as any).defaultProps.style = { fontFamily: _defaultNokiaFont };
+else (Text as any).defaultProps.style = { ...(Text as any).defaultProps.style, fontFamily: _defaultNokiaFont };
+if ((TextInput as any).defaultProps == null) (TextInput as any).defaultProps = {};
+if ((TextInput as any).defaultProps.style == null) (TextInput as any).defaultProps.style = { fontFamily: _defaultNokiaFont };
+else (TextInput as any).defaultProps.style = { ...(TextInput as any).defaultProps.style, fontFamily: _defaultNokiaFont };
 
 export type RootStackParamList = {
   SongDetail: { song: { title: string; lyrics: string; }, songNumber: number };
@@ -152,7 +162,7 @@ const MainTabs = () => {
           tabBarInactiveTintColor: tabBarInactiveTintColor,
           tabBarStyle: tabBarStyle,
           tabBarLabelStyle: {
-            fontFamily: 'Nokia-Bold',
+            fontFamily: getNokiaFontName('bold'),
             fontSize: 12,
           },
         })}
@@ -199,6 +209,9 @@ const AppContent = () => {
     setShowSplash(false);
   };
 
+  // Toggle this to `true` while debugging fonts in development only
+  const SHOW_FONT_DEBUG = __DEV__ && false;
+
   return (
     <>
       <StatusBar 
@@ -211,6 +224,8 @@ const AppContent = () => {
       />
       {showSplash ? (
         <SplashScreen onFinish={handleSplashFinish} />
+      ) : SHOW_FONT_DEBUG ? (
+        <FontDebug />
       ) : (
         <NavigationContainer
           theme={{
