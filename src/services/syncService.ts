@@ -9,7 +9,9 @@ export const syncService = {
     try {
       const netInfo = await NetInfo.fetch();
       if (!netInfo.isConnected) {
-        console.log('No internet connection available');
+        if (__DEV__) {
+          console.log('No internet connection available');
+        }
         return false;
       }
 
@@ -18,22 +20,37 @@ export const syncService = {
 
       // Check for updates every 24 hours
       if (lastSync && currentTime - parseInt(lastSync) < 24 * 60 * 60 * 1000) {
-        console.log('Skipping sync - last sync was less than 24 hours ago');
+        if (__DEV__) {
+          console.log('Skipping sync - last sync was less than 24 hours ago');
+        }
         return false;
       }
 
       // Fetch all pages of data
       const fetchAllPages = async (endpoint: string) => {
-        let allData = [];
-        let currentPage = 1;
-        let hasMore = true;
+        const firstResponse = await api.get(`/${endpoint}?page=1&limit=100`);
+        const firstData = firstResponse.data;
 
-        while (hasMore) {
+        // Handle non-paginated responses (array of items)
+        if (Array.isArray(firstData)) {
+          return firstData;
+        }
+
+        // Handle paginated responses { songs, totalPages }
+        const songs = Array.isArray(firstData?.songs) ? firstData.songs : [];
+        const totalPages = typeof firstData?.totalPages === 'number' ? firstData.totalPages : 1;
+
+        if (totalPages <= 1) {
+          return songs;
+        }
+
+        let allData = [...songs];
+        let currentPage = 2;
+
+        while (currentPage <= totalPages) {
           const response = await api.get(`/${endpoint}?page=${currentPage}&limit=100`);
-          const { songs, totalPages } = response.data;
-          
-          allData = [...allData, ...songs];
-          hasMore = currentPage < totalPages;
+          const pageSongs = Array.isArray(response.data?.songs) ? response.data.songs : [];
+          allData = [...allData, ...pageSongs];
           currentPage++;
         }
 
@@ -42,7 +59,7 @@ export const syncService = {
 
       // Fetch latest data from backend API
       const [hymnalData, hagerignaData] = await Promise.all([
-        fetchAllPages('hymnal'),
+        fetchAllPages('sda'),
         fetchAllPages('hagerigna')
       ]);
 
@@ -53,10 +70,14 @@ export const syncService = {
         AsyncStorage.setItem(LAST_SYNC_KEY, currentTime.toString())
       ]);
 
-      console.log('Successfully synced data from backend API');
+      if (__DEV__) {
+        console.log('Successfully synced data from backend API');
+      }
       return true;
     } catch (error) {
-      console.error('Error syncing data:', error);
+      if (__DEV__) {
+        console.error('Error syncing data:', error);
+      }
       return false;
     }
   },
@@ -66,7 +87,9 @@ export const syncService = {
       const data = await AsyncStorage.getItem(type);
       return data ? JSON.parse(data) : null;
     } catch (error) {
-      console.error(`Error getting local ${type} data:`, error);
+      if (__DEV__) {
+        console.error(`Error getting local ${type} data:`, error);
+      }
       return null;
     }
   }

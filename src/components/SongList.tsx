@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {FlatList, Text, View, TextInput, TouchableWithoutFeedback, TouchableOpacity} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
@@ -12,11 +12,12 @@ import { BookOpenIcon, MagnifyingGlassIcon as OutlineSearchIcon, XMarkIcon as So
 import { HeartIcon as SolidHeartIcon, HashtagIcon as SolidHashtagIcon } from 'react-native-heroicons/solid';
 import { HeartIcon as OutlineHeartIcon } from 'react-native-heroicons/outline';
 import NumpadModal from './NumpadModal';
-import { getCardStyle, useBottomContentPadding, useTabBarHeight } from '../utils/platformUtils';
+import { getCardStyle, useFloatingButtonLayout } from '../utils/platformUtils';
 import {loadFavorites, toggleFavorite} from '../store/favoritesSlice';
 import tw from '../../tailwind';
 
 type Song = {
+  id: string;
   title: string;
   englishTitle: string;
   lyrics: string;
@@ -25,10 +26,7 @@ type Song = {
 type SongListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SongList'>;
 
 const SongList = () => {
-  const { getFloatingButtonBottom } = useTabBarHeight();
-  const contentBottomPadding = useBottomContentPadding(24);
-  const [songs, setSongs] = useState<Song[]>([]);
-  const [filteredSongs, setFilteredSongs] = useState<Song[]>([]);
+  const { floatingButtonBottom, listBottomPadding } = useFloatingButtonLayout();
   const [isNumpadVisible, setNumpadVisible] = useState(false);
   const [isSearchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,7 +47,6 @@ const SongList = () => {
     setSearchVisible(!isSearchVisible);
     if (isSearchVisible) {
       setSearchQuery('');
-      setFilteredSongs(songs);
     }
   };
 
@@ -57,62 +54,59 @@ const SongList = () => {
     dispatch(toggleFavorite(songId, songTitle));
   };
 
+  const songs = useMemo<Song[]>(() => {
+    try {
+      const newTitles = hymnalData.resources.array[0].item; // Amharic titles array
+      const englishTitles = hymnalData.resources.array[3].item; // English titles array
+      const newSongs = hymnalData.resources.array[2].item; // Lyrics array
 
-
-  useEffect(() => {
-    const loadFile = () => {
-      try {
-        const newTitles = hymnalData.resources.array[0].item; // Amharic titles array
-        const englishTitles = hymnalData.resources.array[3].item; // English titles array
-        const newSongs = hymnalData.resources.array[2].item; // Lyrics array
-
-        const combinedSongs = newTitles.map((title: string, index: number) => ({
-          title,
-          englishTitle: englishTitles[index] || '', // English title with fallback
-          lyrics: newSongs[index],
-        }));
-
-        setSongs(combinedSongs);
-        setFilteredSongs(combinedSongs);
-        console.log('Parsed JSON successfully');
-      } catch (err) {
+      return newTitles.map((title: string, index: number) => ({
+        id: `hymnal-${index + 1}`,
+        title,
+        englishTitle: englishTitles[index] || '',
+        lyrics: newSongs[index],
+      }));
+    } catch (err) {
+      if (__DEV__) {
         console.error('Error reading JSON file:', err);
       }
-    };
-
-    loadFile();
+      return [];
+    }
   }, []);
 
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredSongs(songs);
-    } else {
-      const filtered = songs.filter((song, _index) =>
-        song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        song.englishTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        song.lyrics.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setFilteredSongs(filtered);
-    }
+  const filteredSongs = useMemo(() => {
+    if (searchQuery.trim() === '') return songs;
+    const query = searchQuery.toLowerCase();
+    return songs.filter((song) =>
+      song.title.toLowerCase().includes(query) ||
+      song.englishTitle.toLowerCase().includes(query) ||
+      song.lyrics.toLowerCase().includes(query)
+    );
   }, [searchQuery, songs]);
+
+  const songIndexById = useMemo(() => {
+    return new Map(songs.map((song, index) => [song.id, index]));
+  }, [songs]);
 
   const handleSelect = (song: Song, _index: number) => {
     // Find the original index in the full songs array
-    const originalIndex = songs.findIndex(s => s.title === song.title && s.lyrics === song.lyrics);
+    const originalIndex = songIndexById.get(song.id);
+    if (originalIndex === undefined) return;
     navigation.navigate('SongDetail', {song, songNumber: originalIndex + 1});
   };
 
   const handleJumpToSong = (songNumber: number) => {
     const songIndex = songNumber - 1;
     const song = songs[songIndex];
+    if (!song) return;
     navigation.navigate('SongDetail', {song, songNumber});
   };
 
   const renderSongItem = ({item, index}: {item: Song; index: number}) => {
     // Find the original song number
-    const originalIndex = songs.findIndex(s => s.title === item.title && s.lyrics === item.lyrics);
+    const originalIndex = songIndexById.get(item.id) ?? index;
     const songNumber = originalIndex + 1;
-    const songId = `hymnal-${originalIndex + 1}`;
+    const songId = item.id;
     const isFavorite = favoriteIds.includes(songId);
     
     return (
@@ -186,13 +180,13 @@ const SongList = () => {
 
           <FlatList
             data={filteredSongs}
-            keyExtractor={(item, index) => index.toString()}
+            keyExtractor={(item) => item.id}
             renderItem={renderSongItem}
             showsVerticalScrollIndicator={false}
             scrollEnabled={true}
             bounces={true}
             removeClippedSubviews={true}
-            contentContainerStyle={[{ paddingBottom: Math.max(getFloatingButtonBottom(), 24) }]}
+            contentContainerStyle={[{ paddingBottom: listBottomPadding }]}
             keyboardShouldPersistTaps="handled"
             ListEmptyComponent={
               searchQuery ? (
@@ -212,7 +206,7 @@ const SongList = () => {
         onPress={handleOpenNumpad}
         style={[
           tw`absolute right-5 w-16 h-16 bg-accent-6 rounded-full items-center justify-center`,
-          { bottom: getFloatingButtonBottom() },
+          { bottom: floatingButtonBottom },
           {
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },

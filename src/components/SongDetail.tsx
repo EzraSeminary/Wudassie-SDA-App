@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, TouchableWithoutFeedback, ScrollView, TouchableOpacity, Share } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -74,10 +74,7 @@ const SongDetail = () => {
     fetchFullSongData();
   }, [song.title]);
 
-  // Ensure theme state is maintained when navigating
-  useEffect(() => {
-    console.log('SongDetail - Current theme:', isDarkMode ? 'dark' : 'light');
-  }, [isDarkMode]);
+  const lyricLines = useMemo(() => song.lyrics.split('\\n'), [song.lyrics]);
 
   const handleOpenPopup = () => setIsFontSizePopupVisible(true);
   const handleClosePopup = () => setIsFontSizePopupVisible(false);
@@ -249,12 +246,12 @@ const SongDetail = () => {
             showsVerticalScrollIndicator={false}
             scrollEnabled={true}
             bounces={true}
-            contentContainerStyle={{
-              padding: 20,
-              paddingBottom: Math.max(120, contentBottomPadding),
-            }}
+              contentContainerStyle={{
+                padding: 20,
+                paddingBottom: Math.max(getFloatingButtonBottom(-28) + 12, contentBottomPadding, 24),
+              }}
           >
-            {song.lyrics.split('\\n').map((line, index) => (
+            {lyricLines.map((line, index) => (
               <Text key={index} style={dynamicStyles.lyrics}>
                 {line}
               </Text>
@@ -267,7 +264,7 @@ const SongDetail = () => {
           onPress={handleOpenNumpad}
         style={[
           tw`absolute right-5 w-16 h-16 bg-accent-6 rounded-full items-center justify-center`,
-          { bottom: getFloatingButtonBottom() },
+          { bottom: getFloatingButtonBottom(-28) },
             {
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 4 },

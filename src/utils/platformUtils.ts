@@ -78,6 +78,30 @@ export const useBottomContentPadding = (minExtra: number = 24) => {
   return useMemo(() => tabBarHeight + minExtra, [tabBarHeight, minExtra]);
 };
 
+// Shared layout values for screens with a floating action button.
+// Keeps button position and list bottom spacing consistent across tabs.
+export const useFloatingButtonLayout = (
+  buttonSize: number = 64,
+  minExtraPadding: number = 24,
+  buttonGapAboveTab: number = 12,
+  listClearanceAboveButton: number = 12
+) => {
+  const { tabBarHeight } = useTabBarHeight();
+
+  return useMemo(() => {
+    const floatingButtonBottom = tabBarHeight + buttonGapAboveTab;
+    const listBottomPadding = Math.max(
+      tabBarHeight + minExtraPadding,
+      floatingButtonBottom + buttonSize + listClearanceAboveButton
+    );
+
+    return {
+      floatingButtonBottom,
+      listBottomPadding,
+    };
+  }, [tabBarHeight, buttonSize, minExtraPadding, buttonGapAboveTab, listClearanceAboveButton]);
+};
+
 /**
  * Get the correct Nokia font name based on platform and weight
  * This ensures fonts are properly loaded and prevents fallback to system fonts

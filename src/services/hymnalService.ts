@@ -44,14 +44,20 @@ class HymnalService {
       }
       const data = await response.json();
       await AsyncStorage.setItem('hagerigna', JSON.stringify(data));
-      console.log('Hagerigna hymns updated successfully');
+      if (__DEV__) {
+        console.log('Hagerigna hymns updated successfully');
+      }
       return data;
     } catch (error) {
-      console.error('Error fetching Hagerigna hymns:', error);
+      if (__DEV__) {
+        console.error('Error fetching Hagerigna hymns:', error);
+      }
       // Try to get cached data if fetch fails
       const cachedData = await AsyncStorage.getItem('hagerigna');
       if (cachedData) {
-        console.log('Using cached Hagerigna data');
+        if (__DEV__) {
+          console.log('Using cached Hagerigna data');
+        }
         return JSON.parse(cachedData);
       }
       throw error;
@@ -66,14 +72,20 @@ class HymnalService {
       }
       const data = await response.json();
       await AsyncStorage.setItem('hymnal', JSON.stringify(data));
-      console.log('SDA hymns updated successfully');
+      if (__DEV__) {
+        console.log('SDA hymns updated successfully');
+      }
       return data;
     } catch (error) {
-      console.error('Error fetching SDA hymns:', error);
+      if (__DEV__) {
+        console.error('Error fetching SDA hymns:', error);
+      }
       // Try to get cached data if fetch fails
       const cachedData = await AsyncStorage.getItem('hymnal');
       if (cachedData) {
-        console.log('Using cached SDA data');
+        if (__DEV__) {
+          console.log('Using cached SDA data');
+        }
         return JSON.parse(cachedData);
       }
       throw error;
@@ -88,14 +100,18 @@ class HymnalService {
       }
       return await response.json();
     } catch (error) {
-      console.error(`Error searching ${type} hymns:`, error);
+      if (__DEV__) {
+        console.error(`Error searching ${type} hymns:`, error);
+      }
       throw error;
     }
   }
 
   async forceUpdate(): Promise<{ hagerigna: HagerignaHymn[], hymnal: SDAHymn[] }> {
     try {
-      console.log('Starting force update...');
+      if (__DEV__) {
+        console.log('Starting force update...');
+      }
       const [hagerignaData, hymnalData] = await Promise.all([
         this.getHagerignaHymns(),
         this.getSDAHymns()
@@ -106,7 +122,9 @@ class HymnalService {
         hymnal: hymnalData
       };
     } catch (error) {
-      console.error('Error forcing update:', error);
+      if (__DEV__) {
+        console.error('Error forcing update:', error);
+      }
       throw error;
     }
   }
@@ -119,7 +137,9 @@ class HymnalService {
       }
       return null;
     } catch (error) {
-      console.error('Error getting local Hagerigna hymns:', error);
+      if (__DEV__) {
+        console.error('Error getting local Hagerigna hymns:', error);
+      }
       return null;
     }
   }

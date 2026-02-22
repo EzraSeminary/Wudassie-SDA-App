@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableWithoutFeedback, TouchableOpacity, Share } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
@@ -69,10 +69,7 @@ const HagerignaDetail = () => {
     }
   }, [dispatch, favoritesLoaded]);
 
-  // Ensure theme state is maintained when navigating
-  useEffect(() => {
-    console.log('HagerignaDetail - Current theme:', isDarkMode ? 'dark' : 'light');
-  }, [isDarkMode]);
+  const lyricLines = useMemo(() => song.song.split('\\n'), [song.song]);
 
   useEffect(() => {
     setSong(initialSong);
@@ -282,10 +279,10 @@ const HagerignaDetail = () => {
             showsVerticalScrollIndicator={false}
             scrollEnabled={true}
             bounces={true}
-            contentContainerStyle={{ paddingBottom: contentBottomPadding }}
+            contentContainerStyle={{ paddingBottom: Math.max(getFloatingButtonBottom(-28) + 12, contentBottomPadding, 24) }}
           >
             <View style={tw`p-5`}>
-              {song.song.split('\\n').map((line: string, index: number) => (
+              {lyricLines.map((line: string, index: number) => (
                 <Text key={index} style={dynamicStyles.lyrics}>
                   {line}
                 </Text>
@@ -299,7 +296,7 @@ const HagerignaDetail = () => {
           onPress={handleOpenNumpad}
         style={[
           tw`absolute right-5 w-16 h-16 bg-accent-6 rounded-full items-center justify-center`,
-          { bottom: getFloatingButtonBottom() },
+          { bottom: getFloatingButtonBottom(-28) },
             {
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 4 },

@@ -202,7 +202,9 @@ const AppContent = () => {
 
   // Log theme changes for debugging
   useEffect(() => {
-    console.log('Theme changed to:', isDarkMode ? 'dark' : 'light');
+    if (__DEV__) {
+      console.log('Theme changed to:', isDarkMode ? 'dark' : 'light');
+    }
   }, [isDarkMode]);
 
   const handleSplashFinish = () => {

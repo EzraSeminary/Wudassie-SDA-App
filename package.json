@@ -33,6 +33,7 @@
     "react-native-system-navigation-bar": "^2.6.4",
     "react-native-toast-message": "^2.3.3",
     "react-native-vector-icons": "^10.2.0",
+    "react-native-webview": "^13.16.0",
     "react-redux": "^9.2.0",
     "reanimated-bottom-sheet": "^1.0.0-alpha.22",
     "redux": "^5.0.1",
@@ -62,6 +63,6 @@
     "typescript": "5.0.4"
   },
   "engines": {
-    "node": ">=18 <=20"
+    "node": ">=18"
   }
 }

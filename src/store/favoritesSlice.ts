@@ -27,12 +27,16 @@ const favoritesSlice = createSlice({
     addFavorite: (state, action: PayloadAction<string>) => {
       if (!state.favoriteIds.includes(action.payload)) {
         state.favoriteIds.push(action.payload);
-        console.log('Added favorite:', action.payload, 'Current favorites:', state.favoriteIds);
+        if (__DEV__) {
+          console.log('Added favorite:', action.payload, 'Current favorites:', state.favoriteIds);
+        }
       }
     },
     removeFavorite: (state, action: PayloadAction<string>) => {
       state.favoriteIds = state.favoriteIds.filter(id => id !== action.payload);
-      console.log('Removed favorite:', action.payload, 'Current favorites:', state.favoriteIds);
+      if (__DEV__) {
+        console.log('Removed favorite:', action.payload, 'Current favorites:', state.favoriteIds);
+      }
     },
   },
 });
@@ -45,14 +49,20 @@ export const loadFavorites = (): AppThunk => async dispatch => {
         const storedFavorites = await AsyncStorage.getItem('favorites');
         if (storedFavorites) {
             const parsed = JSON.parse(storedFavorites);
-            console.log('Loaded favorites from storage:', parsed);
+            if (__DEV__) {
+              console.log('Loaded favorites from storage:', parsed);
+            }
             dispatch(setFavorites(parsed));
         } else {
-            console.log('No favorites found in storage');
+            if (__DEV__) {
+              console.log('No favorites found in storage');
+            }
             dispatch(setFavorites([]));
         }
     } catch (e) {
-        console.error('Failed to load favorites.', e);
+        if (__DEV__) {
+          console.error('Failed to load favorites.', e);
+        }
         dispatch(setFavorites([]));
     } finally {
         dispatch(setFavoritesLoading(false));
@@ -60,22 +70,32 @@ export const loadFavorites = (): AppThunk => async dispatch => {
 };
 
 export const toggleFavorite = (songId: string, songTitle?: string): AppThunk => async (dispatch, getState) => {
-    console.log('toggleFavorite called with:', songId, songTitle);
+    if (__DEV__) {
+      console.log('toggleFavorite called with:', songId, songTitle);
+    }
     
     const { favorites } = getState();
-    console.log('Current favorites state:', favorites);
+    if (__DEV__) {
+      console.log('Current favorites state:', favorites);
+    }
     
     if (!favorites.isLoaded) {
-        console.warn('Favorites not loaded yet, loading first...');
+        if (__DEV__) {
+          console.warn('Favorites not loaded yet, loading first...');
+        }
         await dispatch(loadFavorites());
         // Get updated state after loading
         const updatedState = getState();
-        console.log('Updated state after loading:', updatedState.favorites);
+        if (__DEV__) {
+          console.log('Updated state after loading:', updatedState.favorites);
+        }
     }
     
     const currentFavorites = getState().favorites;
     const isFavorite = currentFavorites.favoriteIds.includes(songId);
-    console.log('Is currently favorite:', isFavorite);
+    if (__DEV__) {
+      console.log('Is currently favorite:', isFavorite);
+    }
 
     if (isFavorite) {
         dispatch(removeFavorite(songId));
@@ -100,10 +120,14 @@ export const toggleFavorite = (songId: string, songTitle?: string): AppThunk => 
     // Save to AsyncStorage
     try {
         const newFavorites = getState().favorites.favoriteIds;
-        console.log('Saving favorites to storage:', newFavorites);
+        if (__DEV__) {
+          console.log('Saving favorites to storage:', newFavorites);
+        }
         await AsyncStorage.setItem('favorites', JSON.stringify(newFavorites));
     } catch (error) {
-        console.error('Failed to save favorites to storage:', error);
+        if (__DEV__) {
+          console.error('Failed to save favorites to storage:', error);
+        }
     }
 };
 
