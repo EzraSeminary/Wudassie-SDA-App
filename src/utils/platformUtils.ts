@@ -1,7 +1,6 @@
 import { Platform, StatusBar } from 'react-native';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 
 export const isAndroid = Platform.OS === 'android';
 export const isIOS = Platform.OS === 'ios';
@@ -27,7 +26,7 @@ export const getButtonStyle = () => ({
     elevation: 0,
     shadowOpacity: 0,
     borderRadius: 8,
-  }
+  },
 });
 
 // Remove gray border around rounded corners on Android
@@ -41,27 +40,13 @@ export const getCardStyle = () => ({
 // Custom hook to get consistent tab bar height across all screens
 export const useTabBarHeight = () => {
   const insets = useSafeAreaInsets();
-  const defaultHeight = 56 + insets.bottom; // match App.tsx tabBarStyle height
-  const [tabBarHeight, setTabBarHeight] = useState(defaultHeight);
-
-  // Always call the hook - it will work when available
-  const navTabBarHeight = useBottomTabBarHeight();
-
-  useEffect(() => {
-    // Use navigation hook value if available and reasonable, otherwise use our default
-    if (navTabBarHeight && navTabBarHeight > 0 && navTabBarHeight < 200) {
-      setTabBarHeight(navTabBarHeight);
-    } else {
-      // Fallback to configured height from App.tsx
-      setTabBarHeight(defaultHeight);
-    }
-  }, [navTabBarHeight]);
+  // Keep tab bar height deterministic across screens to avoid floating button drift.
+  const tabBarHeight = 56 + insets.bottom; // matches App.tsx tabBarStyle height
 
   // Calculate the bottom position for floating buttons
   // Button should be positioned above the tab bar with some padding
   const getFloatingButtonBottom = (additionalOffset: number = 0) => {
-    // useBottomTabBarHeight already includes safe area inset
-    // Position button 16px above the tab bar, plus any additional offset
+    // Position button above the tab bar with a consistent global offset.
     return tabBarHeight + 16 + additionalOffset;
   };
 
@@ -70,7 +55,7 @@ export const useTabBarHeight = () => {
     getFloatingButtonBottom,
     safeAreaBottom: insets.bottom,
   };
-}; 
+};
 
 // Hook to compute consistent bottom padding for scroll/list content
 export const useBottomContentPadding = (minExtra: number = 24) => {
@@ -79,27 +64,27 @@ export const useBottomContentPadding = (minExtra: number = 24) => {
 };
 
 // Shared layout values for screens with a floating action button.
-// Keeps button position and list bottom spacing consistent across tabs.
+// The tab screen content area already ends at the top of the tab bar, so
+// "bottom" is relative to that. Use only the gap + button size for positioning.
 export const useFloatingButtonLayout = (
   buttonSize: number = 64,
   minExtraPadding: number = 24,
-  buttonGapAboveTab: number = 12,
+  buttonGapAboveTab: number = 20,
   listClearanceAboveButton: number = 12
 ) => {
-  const { tabBarHeight } = useTabBarHeight();
-
   return useMemo(() => {
-    const floatingButtonBottom = tabBarHeight + buttonGapAboveTab;
+    // Distance from content bottom (top of tab bar) to the button's bottom edge.
+    const floatingButtonBottom = buttonGapAboveTab;
+    // List padding so last item clears the button.
     const listBottomPadding = Math.max(
-      tabBarHeight + minExtraPadding,
-      floatingButtonBottom + buttonSize + listClearanceAboveButton
+      minExtraPadding,
+      buttonGapAboveTab + buttonSize + listClearanceAboveButton
     );
-
     return {
       floatingButtonBottom,
       listBottomPadding,
     };
-  }, [tabBarHeight, buttonSize, minExtraPadding, buttonGapAboveTab, listClearanceAboveButton]);
+  }, [buttonSize, minExtraPadding, buttonGapAboveTab, listClearanceAboveButton]);
 };
 
 /**

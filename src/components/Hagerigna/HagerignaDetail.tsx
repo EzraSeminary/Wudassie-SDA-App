@@ -4,7 +4,7 @@ import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
 import { RootStackParamList } from '../../../App';
-import { ArrowLeftIcon, ArrowsPointingOutIcon, EllipsisVerticalIcon, ArrowUpTrayIcon } from 'react-native-heroicons/outline';
+import { ArrowLeftIcon, ArrowsPointingOutIcon, EllipsisVerticalIcon, ArrowUpTrayIcon, AdjustmentsHorizontalIcon } from 'react-native-heroicons/outline';
 import { HeartIcon as SolidHeartIcon, HashtagIcon as SolidHashtagIcon } from 'react-native-heroicons/solid';
 import { HeartIcon as OutlineHeartIcon } from 'react-native-heroicons/outline';
 import FontSizePopup from './../CustomBottomSheet';
@@ -22,14 +22,13 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import hagerignaData from './HagerignaData.json';
 import { loadFavorites, toggleFavorite } from '../../store/favoritesSlice';
 import Orientation from 'react-native-orientation-locker';
-import { useTabBarHeight, useBottomContentPadding, getDefaultFontStyle } from '../../utils/platformUtils';
+import { useFloatingButtonLayout, getDefaultFontStyle } from '../../utils/platformUtils';
 
 type SongDetailRouteProp = RouteProp<RootStackParamList, 'HagerignaDetail'>;
 type HagerignaDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'HagerignaDetail'>;
 
 const HagerignaDetail = () => {
-  const { getFloatingButtonBottom } = useTabBarHeight();
-  const contentBottomPadding = useBottomContentPadding(24);
+  const { floatingButtonBottom, listBottomPadding } = useFloatingButtonLayout();
   const insets = useSafeAreaInsets();
   const route = useRoute<SongDetailRouteProp>();
   const navigation = useNavigation<HagerignaDetailNavigationProp>();
@@ -195,23 +194,27 @@ const HagerignaDetail = () => {
     })
     .simultaneousWithExternalGesture();
 
+  const accentColor = tw.color('accent-6') ?? '#EA9215';
+  const mutedIconColor = isDarkMode ? '#9CA3AF' : '#6B7280';
   const dynamicStyles = {
     container: tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`,
     title: [
       tw`font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
       getDefaultFontStyle('bold'),
-      { fontSize: fontSize + 6, lineHeight: 32 }
+      { fontSize: fontSize + 6, lineHeight: 32 },
     ],
     artist: [
-      tw`font-nokia-bold text-accent-6 text-sm`,
+      tw`text-sm font-nokia-bold ${isDarkMode ? 'text-primary-6' : 'text-secondary-6'}`,
       getDefaultFontStyle('bold'),
     ],
     lyrics: [
       tw`font-nokia-bold mb-2 ${isDarkMode ? 'text-primary-6' : 'text-secondary-6'}`,
       getDefaultFontStyle('bold'),
-      { fontSize, lineHeight: 28 }
+      { fontSize, lineHeight: 28 },
     ],
-    header: tw`flex-row justify-between items-center px-5 pb-5 border-b font-nokia-bold ${isDarkMode ? 'border-dark-primary-8' : 'border-primary-6'}`
+    header: tw`flex-row justify-between items-center px-4 py-3 font-nokia-bold`,
+    trackBox: tw`w-14 h-14 rounded-xl bg-accent-5 items-center justify-center`,
+    divider: tw`h-px mt-4 ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-6'}`,
   };
 
   if (!song) {
@@ -226,60 +229,77 @@ const HagerignaDetail = () => {
     <GestureDetector gesture={panGesture}>
       <View style={dynamicStyles.container}>
         <SafeAreaView style={tw`flex-1`} edges={['top']}>
-          {/* Fixed Header */}
+          {/* Top bar: back + action icons in one row */}
           <View style={[dynamicStyles.header, { paddingTop: Math.max(insets.top + 8, 20) }]}>
             <TouchableWithoutFeedback onPress={handleBackPress}>
               <View style={tw`p-2`}>
-                <ArrowLeftIcon size={24} color="#EA9215" />
+                <ArrowLeftIcon size={24} color={accentColor} />
               </View>
             </TouchableWithoutFeedback>
-
-            <View style={tw`flex-row items-center flex-1 mx-3`}>
-              <View style={tw`flex-1`}>
-                <Text style={[ tw`font-nokia-bold text-3xl ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`]} numberOfLines={2}>
-                  {songNumber}. {song.title}
-                </Text>
-                {song.artist && (
-                  <Text style={[dynamicStyles.artist, tw`mt-1 font-nokia-bold`]}>
-                    {song.artist}
-                  </Text>
+            <View style={tw`flex-row items-center`}>
+              <TouchableOpacity onPress={handleOpenNumpad} style={tw`p-2`}>
+                <SolidHashtagIcon size={22} color={accentColor} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleToggleFavorite} style={tw`p-2`}>
+                {favoriteIds.includes(song.id) ? (
+                  <SolidHeartIcon size={22} color={tw.color('red-500')} />
+                ) : (
+                  <OutlineHeartIcon size={22} color={mutedIconColor} />
                 )}
-              </View>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleShare} style={tw`p-2`}>
+                <ArrowUpTrayIcon size={20} color={mutedIconColor} />
+              </TouchableOpacity>
+              <TouchableWithoutFeedback onPress={() => setIsFullScreen(true)}>
+                <View style={tw`p-2`}>
+                  <ArrowsPointingOutIcon size={20} color={mutedIconColor} />
+                </View>
+              </TouchableWithoutFeedback>
+              <TouchableOpacity onPress={handleOpenPopup} style={tw`p-2`}>
+                <AdjustmentsHorizontalIcon size={22} color={mutedIconColor} />
+              </TouchableOpacity>
+              {(hasSheetMusic || hasAudio) ? (
+                <TouchableWithoutFeedback onPress={handleOpenMoreMenu}>
+                  <View style={tw`p-2`}>
+                    <EllipsisVerticalIcon size={22} color={mutedIconColor} />
+                  </View>
+                </TouchableWithoutFeedback>
+              ) : null}
             </View>
-
-            <TouchableOpacity onPress={handleToggleFavorite} style={tw`p-2`}>
-              {favoriteIds.includes(song.id) ? (
-                <SolidHeartIcon size={24} color={tw.color('red-500')} />
-              ) : (
-                <OutlineHeartIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-              )}
-            </TouchableOpacity>
-
-            {/* Share Button */}
-            <TouchableOpacity onPress={handleShare} style={tw`p-2 mr-2`}>
-              <ArrowUpTrayIcon size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-            </TouchableOpacity>
-
-            <TouchableWithoutFeedback onPress={() => setIsFullScreen(true)}>
-              <View style={tw`p-2 mr-2`}>
-                <ArrowsPointingOutIcon size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-              </View>
-            </TouchableWithoutFeedback>
-
-            <TouchableWithoutFeedback onPress={handleOpenMoreMenu}>
-              <View style={tw`p-2`}>
-                <EllipsisVerticalIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-              </View>
-            </TouchableWithoutFeedback>
           </View>
 
-          {/* Content */}
+          {/* Track info: number box + title & artist with vertical bar */}
+          <View style={tw`px-5 pt-2 pb-4`}>
+            <View style={tw`flex-row items-center`}>
+              <View style={dynamicStyles.trackBox}>
+                <Text style={[tw`text-white font-nokia-bold text-xl`, getDefaultFontStyle('bold')]}>
+                  {songNumber}
+                </Text>
+              </View>
+              <View style={tw`flex-1 ml-4 min-w-0`}>
+                <Text style={[dynamicStyles.title, tw`font-nokia-bold`]}>
+                  {song.title}
+                </Text>
+                {song.artist ? (
+                  <View style={tw`flex-row items-center mt-1.5`}>
+                    <View style={tw`w-1 h-4 rounded-full bg-accent-6 mr-2`} />
+                    <Text style={dynamicStyles.artist} numberOfLines={1}>
+                      {song.artist}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            </View>
+            <View style={dynamicStyles.divider} />
+          </View>
+
+          {/* Lyrics */}
           <ScrollView
             style={tw`flex-1`}
             showsVerticalScrollIndicator={false}
             scrollEnabled={true}
             bounces={true}
-            contentContainerStyle={{ paddingBottom: Math.max(getFloatingButtonBottom(-28) + 12, contentBottomPadding, 24) }}
+            contentContainerStyle={{ paddingBottom: listBottomPadding }}
           >
             <View style={tw`p-5`}>
               {lyricLines.map((line: string, index: number) => (
@@ -296,7 +316,7 @@ const HagerignaDetail = () => {
           onPress={handleOpenNumpad}
         style={[
           tw`absolute right-5 w-16 h-16 bg-accent-6 rounded-full items-center justify-center`,
-          { bottom: getFloatingButtonBottom(-28) },
+          { bottom: floatingButtonBottom },
             {
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 4 },

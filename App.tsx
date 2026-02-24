@@ -40,7 +40,7 @@ if ((TextInput as any).defaultProps.style == null) (TextInput as any).defaultPro
 else (TextInput as any).defaultProps.style = { ...(TextInput as any).defaultProps.style, fontFamily: _defaultNokiaFont };
 
 export type RootStackParamList = {
-  SongDetail: { song: { title: string; lyrics: string; }, songNumber: number };
+  SongDetail: { song: { title: string; lyrics: string; englishTitle?: string }; songNumber: number };
   SongList: undefined;
   HagerignaList: undefined;
   HagerignaDetail: {

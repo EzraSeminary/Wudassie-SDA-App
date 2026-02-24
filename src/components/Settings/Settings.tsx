@@ -41,7 +41,7 @@ const Settings = () => {
           showsVerticalScrollIndicator={false}
           scrollEnabled={true}
           bounces={true}
-          contentContainerStyle={[tw`pb-24` as any, { paddingBottom: contentBottomPadding }]}
+          contentContainerStyle={[tw`pb-2` as any, { paddingBottom: contentBottomPadding }]}
         >
           <View style={tw`px-5`}>
             <View style={tw`flex-row items-center mb-8 pb-5 pt-8 border-b ${isDarkMode ? 'border-dark-primary-8' : 'border-primary-6'}`}>

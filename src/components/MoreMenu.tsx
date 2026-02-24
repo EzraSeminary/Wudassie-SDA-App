@@ -6,11 +6,7 @@ import {
   Modal,
   TouchableWithoutFeedback,
 } from 'react-native';
-import {
-  MusicalNoteIcon,
-  DocumentTextIcon,
-  AdjustmentsHorizontalIcon,
-} from 'react-native-heroicons/outline';
+import { MusicalNoteIcon, DocumentTextIcon } from 'react-native-heroicons/outline';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
 import tw from '../../tailwind';
@@ -22,7 +18,7 @@ import { useRef, useMemo, useCallback, useEffect } from 'react';
 interface MoreMenuProps {
   visible: boolean;
   onClose: () => void;
-  onFontSize: () => void;
+  onFontSize?: () => void;
   onSheetMusic?: () => void;
   onAudio?: () => void;
   hasSheetMusic?: boolean;
@@ -32,7 +28,6 @@ interface MoreMenuProps {
 const MoreMenu: React.FC<MoreMenuProps> = ({
   visible,
   onClose,
-  onFontSize,
   onSheetMusic,
   onAudio,
   hasSheetMusic = false,
@@ -71,16 +66,6 @@ const MoreMenu: React.FC<MoreMenuProps> = ({
   );
 
   const menuItems = [
-    {
-      id: 'fontSize',
-      label: 'Font Size',
-      icon: AdjustmentsHorizontalIcon,
-      onPress: () => {
-        onFontSize();
-        bottomSheetRef.current?.close();
-      },
-      show: true,
-    },
     {
       id: 'sheetMusic',
       label: 'Sheet Music',

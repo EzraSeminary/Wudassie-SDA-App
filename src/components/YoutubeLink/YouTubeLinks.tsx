@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,15 +11,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
+import NetInfo from '@react-native-community/netinfo';
 import { RootState } from '../../store';
 import { MusicalNoteIcon, PlayIcon } from 'react-native-heroicons/outline';
 import { getCardStyle, useBottomContentPadding } from '../../utils/platformUtils';
 import tw from '../../../tailwind';
-import { WebView } from 'react-native-webview';
+import YoutubePlayer from 'react-native-youtube-iframe';
 import { youtubeService, YouTubeLink } from '../../services/youtubeService';
-
-const getYouTubeEmbedUrl = (videoId: string) =>
-  `https://www.youtube.com/embed/${videoId}?playsinline=1&autoplay=0&rel=0&modestbranding=1`;
 
 const MusicPlayer = () => {
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
@@ -31,6 +29,8 @@ const MusicPlayer = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [playerError, setPlayerError] = useState<string | null>(null);
+  const wasOnlineRef = useRef<boolean | null>(null);
 
   const playerWidth = Math.min(width - 40, 640);
   const playerHeight = Math.round(playerWidth * 0.56);
@@ -45,36 +45,59 @@ const MusicPlayer = () => {
     if (!selectedId || !links.some((link) => link.id === selectedId)) {
       setSelectedId(links[0].id);
     }
+    setPlayerError(null);
   }, [links, selectedId]);
 
   const fetchLinks = useCallback(
     async (isRefresh = false) => {
-      if (isRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
+      try {
+        if (isRefresh) {
+          setRefreshing(true);
+        } else {
+          setLoading(true);
+        }
 
-      setError(null);
+        setError(null);
 
-      if (!isRefresh) {
         const cached = await youtubeService.getCachedLinks();
-        if (cached && cached.length > 0) {
+        if (!isRefresh && cached && cached.length > 0) {
           setLinks(cached);
         }
+
+        const netState = await NetInfo.fetch();
+        const isOnline = Boolean(netState.isConnected && netState.isInternetReachable !== false);
+
+        let resolved = cached ?? [];
+
+        if (isOnline) {
+          const fetched = await youtubeService.getLinks();
+          if (fetched.length > 0) {
+            resolved = fetched;
+            setLinks(fetched);
+          }
+        } else if (cached && cached.length > 0) {
+          setError('Offline: showing cached videos.');
+        }
+
+        if (resolved.length === 0) {
+          setError(isOnline ? 'No videos available yet.' : 'No internet connection and no cached videos.');
+          setSelectedId(null);
+          return;
+        }
+
+        const hasCurrent = selectedId ? resolved.some((link) => link.id === selectedId) : false;
+        if (!hasCurrent) {
+          const dailyRandom = await youtubeService.getDailyRandomLink(resolved);
+          if (dailyRandom) {
+            setSelectedId(dailyRandom.id);
+          }
+        }
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
       }
-
-      const data = await youtubeService.getLinks();
-      setLinks(data);
-
-      if (data.length === 0) {
-        setError('No videos available yet.');
-      }
-
-      setLoading(false);
-      setRefreshing(false);
     },
-    []
+    [selectedId]
   );
 
   useEffect(() => {
@@ -90,6 +113,24 @@ const MusicPlayer = () => {
     };
   }, [fetchLinks]);
 
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      const isOnline = Boolean(state.isConnected && state.isInternetReachable !== false);
+      const wasOnline = wasOnlineRef.current;
+
+      // Sync once when connection is regained.
+      if (wasOnline === false && isOnline) {
+        fetchLinks(true);
+      }
+
+      wasOnlineRef.current = isOnline;
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [fetchLinks]);
+
   const dynamicStyles = {
     container: tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`,
     card: [
@@ -101,7 +142,7 @@ const MusicPlayer = () => {
     meta: tw`text-xs font-nokia-bold ${isDarkMode ? 'text-primary-6' : 'text-secondary-6'}`,
   };
 
-  const renderHeader = () => (
+  const renderPinnedTop = () => (
     <View style={tw`px-5 pt-6 pb-4`}>
       <View style={tw`flex-row items-center mb-4`}>
         <MusicalNoteIcon size={28} color="#EA9215" />
@@ -120,18 +161,38 @@ const MusicPlayer = () => {
             {selectedLink.title}
           </Text>
           <View style={tw`items-center`}>
-            <View style={tw`overflow-hidden rounded-xl`}>
-              <WebView
-                source={{ uri: getYouTubeEmbedUrl(selectedLink.videoId) }}
-                style={{ width: playerWidth, height: playerHeight }}
-                javaScriptEnabled
-                domStorageEnabled
-                allowsInlineMediaPlayback
-                allowsFullscreenVideo
-                mediaPlaybackRequiresUserAction
+            <View style={tw`overflow-hidden rounded-xl bg-black`}>
+              <YoutubePlayer
+                key={selectedLink.id}
+                height={playerHeight}
+                width={playerWidth}
+                play={false}
+                videoId={selectedLink.videoId}
+                initialPlayerParams={{
+                  controls: true,
+                  rel: false,
+                  modestbranding: true,
+                  iv_load_policy: 3,
+                }}
+                onError={(playerErr) => {
+                  if (playerErr === 'video_not_found') {
+                    setPlayerError('This video is unavailable.');
+                    return;
+                  }
+                  if (playerErr === 'embed_not_allowed') {
+                    setPlayerError('This video cannot be embedded (YouTube error 153). Please pick another video.');
+                    return;
+                  }
+                  setPlayerError('Unable to load this video. Please try another one.');
+                }}
               />
             </View>
           </View>
+          {playerError ? (
+            <Text style={tw`mt-3 text-xs font-nokia-bold text-red-500`}>
+              {playerError}
+            </Text>
+          ) : null}
           {selectedLink.channelTitle ? (
             <Text style={[dynamicStyles.subtitle, tw`mt-3`]} numberOfLines={1}>
               {selectedLink.channelTitle}
@@ -149,10 +210,12 @@ const MusicPlayer = () => {
           <Text style={tw`text-sm font-nokia-bold text-red-500`}>{error}</Text>
         </View>
       ) : null}
+    </View>
+  );
 
-      <Text style={[dynamicStyles.subtitle, tw`mt-6 mb-2`]}>
-        All Videos
-      </Text>
+  const renderListHeader = () => (
+    <View style={tw`px-5 pt-2 pb-2`}>
+      <Text style={dynamicStyles.subtitle}>All Videos</Text>
     </View>
   );
 
@@ -160,7 +223,10 @@ const MusicPlayer = () => {
     const isActive = item.id === selectedLink?.id;
     return (
       <TouchableOpacity
-        onPress={() => setSelectedId(item.id)}
+        onPress={() => {
+          setPlayerError(null);
+          setSelectedId(item.id);
+        }}
         style={[
           tw`flex-row items-center mx-5 mb-3 p-3 rounded-2xl ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
           getCardStyle(),
@@ -203,11 +269,12 @@ const MusicPlayer = () => {
   return (
     <View style={dynamicStyles.container}>
       <SafeAreaView style={tw`flex-1`}>
+        {renderPinnedTop()}
         <FlatList
           data={links}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          ListHeaderComponent={renderHeader}
+          ListHeaderComponent={renderListHeader}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: contentBottomPadding }}
           refreshControl={

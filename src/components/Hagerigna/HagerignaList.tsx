@@ -262,7 +262,7 @@ const HagerignaList = () => {
       <TouchableOpacity
         style={[
           dynamicStyles.toggleButton,
-          viewMode === 'songs' || viewMode === 'singerSongs' ? dynamicStyles.toggleButtonActive : {},
+          viewMode === 'songs' ? dynamicStyles.toggleButtonActive : {},
           getCardStyle(),
         ]}
         onPress={() => {
@@ -271,14 +271,14 @@ const HagerignaList = () => {
           setSearchQuery('');
         }}
       >
-        <Text style={viewMode === 'songs' || viewMode === 'singerSongs' ? dynamicStyles.toggleButtonTextActive : dynamicStyles.toggleButtonText}>
+        <Text style={viewMode === 'songs' ? dynamicStyles.toggleButtonTextActive : dynamicStyles.toggleButtonText}>
           Songs
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={[
           dynamicStyles.toggleButton,
-          viewMode === 'singers' ? dynamicStyles.toggleButtonActive : {},
+          viewMode === 'singers' || viewMode === 'singerSongs' ? dynamicStyles.toggleButtonActive : {},
           getCardStyle(),
         ]}
         onPress={() => {
@@ -287,7 +287,7 @@ const HagerignaList = () => {
           setSearchQuery('');
         }}
       >
-        <Text style={viewMode === 'singers' ? dynamicStyles.toggleButtonTextActive : dynamicStyles.toggleButtonText}>
+        <Text style={viewMode === 'singers' || viewMode === 'singerSongs' ? dynamicStyles.toggleButtonTextActive : dynamicStyles.toggleButtonText}>
           Singers
         </Text>
       </TouchableOpacity>

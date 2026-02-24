@@ -5,7 +5,8 @@ const BASE_URL = 'https://wudassie-database.onrender.com/api';
 
 const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 10000,
+  // Render cold starts can exceed 10s; use a safer default timeout.
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',

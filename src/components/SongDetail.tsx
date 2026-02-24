@@ -6,7 +6,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootState, AppDispatch } from '../store';
 import { RootStackParamList } from '../../App';
-import { ArrowLeftIcon, ArrowsPointingOutIcon, EllipsisVerticalIcon, ArrowUpTrayIcon } from 'react-native-heroicons/outline';
+import { ArrowLeftIcon, ArrowsPointingOutIcon, EllipsisVerticalIcon, ArrowUpTrayIcon, AdjustmentsHorizontalIcon } from 'react-native-heroicons/outline';
 import { HeartIcon as SolidHeartIcon, HashtagIcon as SolidHashtagIcon } from 'react-native-heroicons/solid';
 import { HeartIcon as OutlineHeartIcon } from 'react-native-heroicons/outline';
 import { loadFavorites, toggleFavorite } from '../store/favoritesSlice';
@@ -21,14 +21,13 @@ import tw from '../../tailwind';
 import hymnalData from './SDA_Hymnal.json';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
-import { useTabBarHeight, useBottomContentPadding, getDefaultFontStyle } from '../utils/platformUtils';
+import { useFloatingButtonLayout, getDefaultFontStyle } from '../utils/platformUtils';
 
 type SongDetailRouteProp = RouteProp<RootStackParamList, 'SongDetail'>;
 type SongDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SongDetail'>;
 
 const SongDetail = () => {
-  const { getFloatingButtonBottom } = useTabBarHeight();
-  const contentBottomPadding = useBottomContentPadding(2);
+  const { floatingButtonBottom, listBottomPadding } = useFloatingButtonLayout();
   const insets = useSafeAreaInsets();
   const route = useRoute<SongDetailRouteProp>();
   const navigation = useNavigation<SongDetailNavigationProp>();
@@ -173,74 +172,98 @@ const SongDetail = () => {
 
 
 
+  const accentColor = tw.color('accent-6') ?? '#EA9215';
+  const mutedIconColor = isDarkMode ? '#9CA3AF' : '#6B7280';
   const dynamicStyles = {
     container: tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`,
     title: [
       tw`font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
       getDefaultFontStyle('bold'),
-      { 
-        fontSize: fontSize + 6,
-        lineHeight: 32
-      }
+      { fontSize: fontSize + 6, lineHeight: 32 },
+    ],
+    subtitle: [
+      tw`text-sm font-nokia-bold ${isDarkMode ? 'text-primary-6' : 'text-secondary-6'}`,
+      getDefaultFontStyle('bold'),
     ],
     lyrics: [
       tw`font-nokia-bold mb-2 ${isDarkMode ? 'text-primary-6' : 'text-secondary-6'}`,
       getDefaultFontStyle('bold'),
-      { 
-        fontSize,
-        lineHeight: 28
-      }
+      { fontSize, lineHeight: 28 },
     ],
-    header: tw`flex-row justify-between items-center px-5 pb-5 border-b font-nokia-bold ${isDarkMode ? 'border-dark-primary-8' : 'border-primary-6'}`
+    header: tw`flex-row justify-between items-center px-4 py-3 font-nokia-bold`,
+    trackBox: tw`w-14 h-14 rounded-xl bg-accent-5 items-center justify-center`,
+    divider: tw`h-px mt-4 ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-6'}`,
   };
 
   return (
     <GestureDetector gesture={panGesture}>
       <View style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}>
         <SafeAreaView style={tw`flex-1`} edges={['top']}>
-          {/* Fixed Header */}
+          {/* Top bar: back + action icons in one row */}
           <View style={[dynamicStyles.header, { paddingTop: Math.max(insets.top + 8, 20) }]}>
             <TouchableWithoutFeedback onPress={handleBackPress}>
               <View style={tw`p-2`}>
-                <ArrowLeftIcon size={24} color="#EA9215" />
+                <ArrowLeftIcon size={24} color={accentColor} />
               </View>
             </TouchableWithoutFeedback>
-
-            <View style={tw`flex-row items-center flex-1 mx-3`}>
-              <Text style={[dynamicStyles.title, tw`flex-1 font-nokia-bold`]} numberOfLines={2}>
-                {songNumber}. {song.title}
-              </Text>
+            <View style={tw`flex-row items-center`}>
+              <TouchableOpacity onPress={handleOpenNumpad} style={tw`p-2`}>
+                <SolidHashtagIcon size={22} color={accentColor} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleToggleFavorite} style={tw`p-2`}>
+                {isFavorite ? (
+                  <SolidHeartIcon size={22} color={tw.color('red-500')} />
+                ) : (
+                  <OutlineHeartIcon size={22} color={mutedIconColor} />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleShare} style={tw`p-2`}>
+                <ArrowUpTrayIcon size={20} color={mutedIconColor} />
+              </TouchableOpacity>
+              <TouchableWithoutFeedback onPress={() => setIsFullScreen(true)}>
+                <View style={tw`p-2`}>
+                  <ArrowsPointingOutIcon size={20} color={mutedIconColor} />
+                </View>
+              </TouchableWithoutFeedback>
+              <TouchableOpacity onPress={handleOpenPopup} style={tw`p-2`}>
+                <AdjustmentsHorizontalIcon size={22} color={mutedIconColor} />
+              </TouchableOpacity>
+              {(hasSheetMusic || hasAudio) ? (
+                <TouchableWithoutFeedback onPress={handleOpenMoreMenu}>
+                  <View style={tw`p-2`}>
+                    <EllipsisVerticalIcon size={22} color={mutedIconColor} />
+                  </View>
+                </TouchableWithoutFeedback>
+              ) : null}
             </View>
-
-            {/* Favorite Button */}
-            <TouchableOpacity onPress={handleToggleFavorite} style={tw`p-2 mr-2`}>
-              {isFavorite ? (
-                <SolidHeartIcon size={24} color={tw.color('red-500')} />
-              ) : (
-                <OutlineHeartIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-              )}
-            </TouchableOpacity>
-
-            {/* Share Button */}
-            <TouchableOpacity onPress={handleShare} style={tw`p-2 mr-2`}>
-              <ArrowUpTrayIcon size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-            </TouchableOpacity>
-
-            {/* Fullscreen Button */}
-            <TouchableWithoutFeedback onPress={() => setIsFullScreen(true)}>
-              <View style={tw`p-2 mr-2`}>
-                <ArrowsPointingOutIcon size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-              </View>
-            </TouchableWithoutFeedback>
-
-            <TouchableWithoutFeedback onPress={handleOpenMoreMenu}>
-              <View style={tw`p-2`}>
-                <EllipsisVerticalIcon size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-              </View>
-            </TouchableWithoutFeedback>
           </View>
 
-          {/* Content */}
+          {/* Track info: number box + title & subtitle */}
+          <View style={tw`px-5 pt-2 pb-4`}>
+            <View style={tw`flex-row items-center`}>
+              <View style={dynamicStyles.trackBox}>
+                <Text style={[tw`text-white font-nokia-bold text-xl`, getDefaultFontStyle('bold')]}>
+                  {songNumber}
+                </Text>
+              </View>
+              <View style={tw`flex-1 ml-4 min-w-0`}>
+                <Text style={[dynamicStyles.title, tw`font-nokia-bold`]}>
+                  {song.title}
+                </Text>
+                {song.englishTitle ? (
+                  <View style={tw`flex-row items-center mt-1.5`}>
+                    <View style={tw`w-1 h-4 rounded-full bg-accent-6 mr-2`} />
+                    <Text style={dynamicStyles.subtitle} numberOfLines={1}>
+                      {song.englishTitle}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            </View>
+            <View style={dynamicStyles.divider} />
+          </View>
+
+          {/* Lyrics */}
           <ScrollView
             style={tw`flex-1`}
             showsVerticalScrollIndicator={false}
@@ -248,7 +271,7 @@ const SongDetail = () => {
             bounces={true}
               contentContainerStyle={{
                 padding: 20,
-                paddingBottom: Math.max(getFloatingButtonBottom(-28) + 12, contentBottomPadding, 24),
+                paddingBottom: listBottomPadding,
               }}
           >
             {lyricLines.map((line, index) => (
@@ -264,7 +287,7 @@ const SongDetail = () => {
           onPress={handleOpenNumpad}
         style={[
           tw`absolute right-5 w-16 h-16 bg-accent-6 rounded-full items-center justify-center`,
-          { bottom: getFloatingButtonBottom(-28) },
+          { bottom: floatingButtonBottom },
             {
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 4 },

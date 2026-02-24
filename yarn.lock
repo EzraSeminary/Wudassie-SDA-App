@@ -3755,6 +3755,11 @@ event-target-shim@^5.0.0, event-target-shim@^5.0.1:
   resolved "https://registry.npmjs.org/event-target-shim/-/event-target-shim-5.0.1.tgz"
   integrity sha512-i/2XbnSz/uxRCU6+NdVJgKWDTM427+MqYbkQzD321DuCQJUqOuJKIA0IM2+W2xtYHdKOmZ4dR6fExsd4SXL+WQ==
 
+events@^3.3.0:
+  version "3.3.0"
+  resolved "https://registry.npmjs.org/events/-/events-3.3.0.tgz"
+  integrity sha512-mQw+2fkQbALzQ7V0MY0IqdnXNOeTtP4r0lN9z7AAawCXgqea7bDii20AYrIBrFd/Hx0M2Ocz6S111CaFkUcb0Q==
+
 execa@^5.0.0:
   version "5.1.1"
   resolved "https://registry.npmjs.org/execa/-/execa-5.1.1.tgz"
@@ -6377,7 +6382,7 @@ react-native-vector-icons@^10.2.0:
     prop-types "^15.7.2"
     yargs "^16.1.1"
 
-react-native-webview@^13.16.0:
+react-native-webview@^13.16.0, react-native-webview@>=7.0.0:
   version "13.16.0"
   resolved "https://registry.npmjs.org/react-native-webview/-/react-native-webview-13.16.0.tgz"
   integrity sha512-Nh13xKZWW35C0dbOskD7OX01nQQavOzHbCw9XoZmar4eXCo7AvrYJ0jlUfRVVIJzqINxHlpECYLdmAdFsl9xDA==
@@ -6385,7 +6390,14 @@ react-native-webview@^13.16.0:
     escape-string-regexp "^4.0.0"
     invariant "2.2.4"
 
-react-native@*, "react-native@^0.0.0-0 || >=0.65 <1.0", react-native@^0.78.0, react-native@>=0.59, react-native@>=0.62.2, react-native@>=0.63.2, react-native@>=0.73.0:
+react-native-youtube-iframe@^2.4.1:
+  version "2.4.1"
+  resolved "https://registry.npmjs.org/react-native-youtube-iframe/-/react-native-youtube-iframe-2.4.1.tgz"
+  integrity sha512-MIzVlQYp6sc/Z7b0YwluALd0UbACQ7vscpcVVTmcHvQ5ujN2f6LJdDFxI++xy7TUeJS73k8vBdlznb5bT/P/Gg==
+  dependencies:
+    events "^3.3.0"
+
+react-native@*, "react-native@^0.0.0-0 || >=0.65 <1.0", react-native@^0.78.0, react-native@>=0.59, react-native@>=0.60, react-native@>=0.62.2, react-native@>=0.63.2, react-native@>=0.73.0:
   version "0.78.0"
   resolved "https://registry.npmjs.org/react-native/-/react-native-0.78.0.tgz"
   integrity sha512-3PO4tNvCN6BdAKcoY70v1sLfxYCmDR4KS1VTY+kIBKy5Qznp27QNxL7zBQjvS6Jp91gc8N82QbysQrfBlwg9gQ==
@@ -6448,7 +6460,7 @@ react-test-renderer@19.0.0:
     react-is "^19.0.0"
     scheduler "^0.25.0"
 
-react@*, "react@^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react@^16.9.0 || ^17.0.0 || ^18 || ^19", "react@^18.0 || ^19", react@^19.0.0, "react@>= 18.2.0", react@>=16.13.1, react@>=16.8, react@>=17.0.0, react@>=18, react@>=18.2.0, react@19.0.0:
+react@*, "react@^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react@^16.9.0 || ^17.0.0 || ^18 || ^19", "react@^18.0 || ^19", react@^19.0.0, "react@>= 18.2.0", react@>=16.13.1, react@>=16.8, react@>=16.8.6, react@>=17.0.0, react@>=18, react@>=18.2.0, react@19.0.0:
   version "19.0.0"
   resolved "https://registry.npmjs.org/react/-/react-19.0.0.tgz"
   integrity sha512-V8AVnmPIICiWpGfm6GLzCR/W5FXLchHop40W4nXBmdlEceh16rCN8O8LNWm5bh5XUX91fh7KpA+W0TgMKmgTpQ==
