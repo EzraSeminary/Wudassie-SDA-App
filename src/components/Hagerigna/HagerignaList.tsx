@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   Text,
@@ -7,6 +7,9 @@ import {
   TouchableWithoutFeedback,
   TouchableOpacity,
   ActivityIndicator,
+  Platform,
+  Animated,
+  LayoutChangeEvent,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -19,7 +22,7 @@ import { hymnalService, HagerignaHymn } from '../../services/hymnalService';
 import { loadFavorites, toggleFavorite } from '../../store/favoritesSlice';
 import NumpadModal from './../NumpadModal';
 import { getCardStyle } from '../../utils/platformUtils';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import tw from '../../../tailwind';
 import { MusicalNoteIcon, MagnifyingGlassIcon as OutlineSearchIcon } from 'react-native-heroicons/outline';
 import { HeartIcon as SolidHeartIcon, XMarkIcon as SolidXMarkIcon, HashtagIcon as SolidHashtagIcon } from 'react-native-heroicons/solid';
@@ -38,7 +41,12 @@ type SingerItem = {
 
 const HagerignaList = () => {
   const { floatingButtonBottom, listBottomPadding } = useFloatingButtonLayout();
+  const insets = useSafeAreaInsets();
   const [songs, setSongs] = useState<HagerignaHymn[]>([]);
+  const headerTopPadding = Platform.OS === 'android'
+    ? Math.max(insets.top + 8, 18)
+    : Math.max(insets.top + 8, 16);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isNumpadVisible, setNumpadVisible] = useState(false);
@@ -46,6 +54,8 @@ const HagerignaList = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('songs');
   const [selectedSinger, setSelectedSinger] = useState<string | null>(null);
+  const [segmentWidth, setSegmentWidth] = useState(0);
+  const slideAnim = useRef(new Animated.Value(0)).current;
 
   const navigation = useNavigation<SongListNavigationProp>();
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
@@ -198,8 +208,26 @@ const HagerignaList = () => {
     setSearchQuery('');
   };
 
+  const isSingersActive = viewMode === 'singers' || viewMode === 'singerSongs';
+  useEffect(() => {
+    if (segmentWidth <= 0) return;
+    Animated.spring(slideAnim, {
+      toValue: isSingersActive ? 1 : 0,
+      useNativeDriver: true,
+      friction: 8,
+      tension: 120,
+    }).start();
+  }, [isSingersActive, segmentWidth, slideAnim]);
+
+  const segmentPadding = 6;
+  const onSegmentLayout = (e: LayoutChangeEvent) => {
+    const { width } = e.nativeEvent.layout;
+    const w = (width - segmentPadding * 2) / 2;
+    if (w > 0) setSegmentWidth(w);
+  };
+
   const dynamicStyles = {
-    container: tw`flex-1 mt-8 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`,
+    container: tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`,
     songItem: [
       tw`flex-row items-center rounded-xl mt-2 mx-4 p-4 ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
       getCardStyle(),
@@ -212,10 +240,10 @@ const HagerignaList = () => {
     songTitle: tw`text-2xl font-nokia-bold leading-6 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
     artistName: tw`font-nokia-bold ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`,
     sectionTitle: tw`text-lg font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
-    toggleButton: tw`flex-1 py-3 px-4 mx-2 rounded-lg ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
-    toggleButtonActive: tw`flex-1 py-3 px-4 mx-2 rounded-lg bg-accent-6`,
-    toggleButtonText: tw`text-center font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
-    toggleButtonTextActive: tw`text-center font-nokia-bold text-white`,
+    segmentTrack: tw`flex-row rounded-full overflow-hidden ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
+    segmentButton: tw`flex-1 py-3 items-center justify-center`,
+    segmentText: tw`text-center font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
+    segmentTextActive: tw`text-center font-nokia-bold text-white`,
   };
 
   const renderSongItem = ({ item }: { item: HagerignaHymn }) => {
@@ -259,42 +287,54 @@ const HagerignaList = () => {
     </TouchableOpacity>
   );
 
-  const renderToggleButtons = () => (
-    <View style={tw`flex-row px-4 pb-2`}>
-      <TouchableOpacity
-        style={[
-          dynamicStyles.toggleButton,
-          viewMode === 'songs' ? dynamicStyles.toggleButtonActive : {},
-          getCardStyle(),
-        ]}
-        onPress={() => {
-          setViewMode('songs');
-          setSelectedSinger(null);
-          setSearchQuery('');
-        }}
-      >
-        <Text style={viewMode === 'songs' ? dynamicStyles.toggleButtonTextActive : dynamicStyles.toggleButtonText}>
-          Songs
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[
-          dynamicStyles.toggleButton,
-          viewMode === 'singers' || viewMode === 'singerSongs' ? dynamicStyles.toggleButtonActive : {},
-          getCardStyle(),
-        ]}
-        onPress={() => {
-          setViewMode('singers');
-          setSelectedSinger(null);
-          setSearchQuery('');
-        }}
-      >
-        <Text style={viewMode === 'singers' || viewMode === 'singerSongs' ? dynamicStyles.toggleButtonTextActive : dynamicStyles.toggleButtonText}>
-          Singers
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
+  const renderToggleButtons = () => {
+    const slideTranslate = slideAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, segmentWidth],
+    });
+    return (
+      <View style={tw`px-4 pb-2`} onLayout={onSegmentLayout}>
+        <View style={[dynamicStyles.segmentTrack, { padding: segmentPadding }]}>
+          <Animated.View
+            style={[
+              tw`absolute rounded-full bg-accent-6`,
+              {
+                left: segmentPadding,
+                top: segmentPadding,
+                bottom: segmentPadding,
+                width: segmentWidth,
+                transform: [{ translateX: slideTranslate }],
+              },
+            ]}
+          />
+          <TouchableOpacity
+            style={dynamicStyles.segmentButton}
+            onPress={() => {
+              setViewMode('songs');
+              setSelectedSinger(null);
+              setSearchQuery('');
+            }}
+          >
+            <Text style={viewMode === 'songs' ? dynamicStyles.segmentTextActive : dynamicStyles.segmentText}>
+              Songs
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={dynamicStyles.segmentButton}
+            onPress={() => {
+              setViewMode('singers');
+              setSelectedSinger(null);
+              setSearchQuery('');
+            }}
+          >
+            <Text style={viewMode === 'singers' || viewMode === 'singerSongs' ? dynamicStyles.segmentTextActive : dynamicStyles.segmentText}>
+              Singers
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
 
   const searchPlaceholder = viewMode === 'singers'
     ? 'Search singers...'
@@ -304,9 +344,9 @@ const HagerignaList = () => {
 
   return (
     <View style={dynamicStyles.container}>
-      <SafeAreaView style={tw`flex-1`} edges={['top']}>
+      <SafeAreaView style={tw`flex-1`} edges={['left', 'right']}>
         {/* Fixed Header */}
-        <View style={tw`flex-row items-center justify-between px-5 py-4`}>
+        <View style={[tw`flex-row items-center justify-between px-5 pb-4`, { paddingTop: headerTopPadding }]}>
           <View style={tw`flex-row items-center flex-1`}>
             <MusicalNoteIcon size={28} color="#EA9215" />
             <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>

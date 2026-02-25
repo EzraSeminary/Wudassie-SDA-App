@@ -1,9 +1,9 @@
 import React, {useEffect, useMemo, useState} from 'react';
-import {FlatList, Text, View, TextInput, TouchableWithoutFeedback, TouchableOpacity} from 'react-native';
+import {FlatList, Text, View, TextInput, TouchableWithoutFeedback, TouchableOpacity, Platform} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import NetInfo from '@react-native-community/netinfo';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {useSelector, useDispatch} from 'react-redux';
 import {RootState, AppDispatch} from '../store';
 import {RootStackParamList} from '../../App';
@@ -28,7 +28,12 @@ type SongListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Son
 
 const SongList = () => {
   const { floatingButtonBottom, listBottomPadding } = useFloatingButtonLayout();
+  const insets = useSafeAreaInsets();
   const [isNumpadVisible, setNumpadVisible] = useState(false);
+  const headerTopPadding = Platform.OS === 'android'
+    ? Math.max(insets.top + 8, 18)
+    : Math.max(insets.top + 8, 16);
+
   const [isSearchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const navigation = useNavigation<SongListNavigationProp>();
@@ -210,10 +215,10 @@ const SongList = () => {
   };
 
   return (
-    <View style={tw`flex-1 mt-8 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}>
-      <SafeAreaView style={tw`flex-1`} edges={['top']}>
+    <View style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}>
+      <SafeAreaView style={tw`flex-1`} edges={['left', 'right']}>
         {/* Fixed Header */}
-        <View style={[tw`flex-row items-center justify-between px-4 py-4`,]}>
+        <View style={[tw`flex-row items-center justify-between px-4 pb-4`, { paddingTop: headerTopPadding }]}>
           <View style={tw`flex-row items-center flex-1`}>
             <BookOpenIcon size={28} color="#EA9215" />
             <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>

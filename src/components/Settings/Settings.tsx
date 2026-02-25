@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, Switch, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, Switch, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSelector, useDispatch } from 'react-redux';
@@ -17,6 +17,8 @@ const Settings = () => {
   const fontSize = useSelector((state: RootState) => state.fontSize.fontSize);
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
   const dispatch = useDispatch<AppDispatch>();
+  const insets = useSafeAreaInsets();
+  const headerTopPadding = Platform.OS === 'android' ? Math.max(insets.top + 8, 18) : Math.max(insets.top + 8, 16);
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastSyncTimestamp, setLastSyncTimestamp] = useState<number | null>(null);
   const [notificationTime, setNotificationTime] = useState<{ hour: number; minute: number; formatted: string } | null>(null);
@@ -76,7 +78,7 @@ const Settings = () => {
 
   return (
     <View style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}>
-      <SafeAreaView style={tw`flex-1`} edges={['top']}>
+      <SafeAreaView style={tw`flex-1`} edges={['left', 'right']}>
         <ScrollView
           showsVerticalScrollIndicator={false}
           scrollEnabled={true}
@@ -84,7 +86,7 @@ const Settings = () => {
           contentContainerStyle={[tw`pb-2` as any, { paddingBottom: contentBottomPadding }]}
         >
           <View style={tw`px-5`}>
-            <View style={tw`flex-row items-center mb-8 pb-5 pt-8 border-b ${isDarkMode ? 'border-dark-primary-8' : 'border-primary-6'}`}>
+            <View style={[tw`flex-row items-center mb-8 pb-5 border-b ${isDarkMode ? 'border-dark-primary-8' : 'border-primary-6'}`, { paddingTop: headerTopPadding }]}>
               <Cog6ToothIcon size={40} color="#EA9215" />
               <Text style={tw`text-3xl font-nokia-bold ml-4 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
                 Settings

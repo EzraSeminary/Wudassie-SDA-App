@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
 import tw from '../../../tailwind';
@@ -38,6 +38,8 @@ const FavoritesList = () => {
   const [error, setError] = useState<string | null>(null);
 
   const navigation = useNavigation<FavoritesListNavigationProp>();
+  const insets = useSafeAreaInsets();
+  const headerTopPadding = Platform.OS === 'android' ? Math.max(insets.top + 8, 18) : Math.max(insets.top + 8, 16);
   const contentBottomPadding = useBottomContentPadding(24);
   const dispatch: AppDispatch = useDispatch();
 
@@ -141,16 +143,24 @@ const FavoritesList = () => {
 
   if (hymnsLoading && !favoritesLoaded) {
     return (
-      <View style={[dynamicStyles.container, tw`justify-center items-center`]}>
-        <ActivityIndicator size="large" color="#EA9215" />
+      <View style={dynamicStyles.container}>
+        <SafeAreaView style={tw`flex-1`} edges={['left', 'right']}>
+          <View style={tw`flex-1 justify-center items-center`}>
+            <ActivityIndicator size="large" color="#EA9215" />
+          </View>
+        </SafeAreaView>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={[dynamicStyles.container, tw`justify-center items-center`]}>
-        <Text style={dynamicStyles.emptyText}>{error}</Text>
+      <View style={dynamicStyles.container}>
+        <SafeAreaView style={tw`flex-1`} edges={['left', 'right']}>
+          <View style={tw`flex-1 justify-center items-center`}>
+            <Text style={dynamicStyles.emptyText}>{error}</Text>
+          </View>
+        </SafeAreaView>
       </View>
     );
   }
@@ -187,8 +197,8 @@ const FavoritesList = () => {
   if (currentFavorites.length === 0) {
     return (
       <View style={dynamicStyles.container}>
-        <SafeAreaView style={tw`flex-1`} edges={['top']}>
-          <View style={dynamicStyles.header}>
+        <SafeAreaView style={tw`flex-1`} edges={['left', 'right']}>
+          <View style={[dynamicStyles.header, { paddingTop: headerTopPadding }]}>
             <MusicalNoteIcon size={28} color="#EA9215" />
             <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
               Favorite Songs
@@ -238,8 +248,8 @@ const FavoritesList = () => {
 
   return (
     <View style={dynamicStyles.container}>
-      <SafeAreaView style={tw`flex-1`} edges={['top']}>
-        <View style={dynamicStyles.header}>
+      <SafeAreaView style={tw`flex-1`} edges={['left', 'right']}>
+        <View style={[dynamicStyles.header, { paddingTop: headerTopPadding }]}>
           <MusicalNoteIcon size={28} color="#EA9215" />
           <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
             Favorite Songs

@@ -8,8 +8,9 @@ import {
   ActivityIndicator,
   RefreshControl,
   useWindowDimensions,
+  Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import NetInfo from '@react-native-community/netinfo';
 import { RootState } from '../../store';
@@ -21,6 +22,8 @@ import { youtubeService, YouTubeLink } from '../../services/youtubeService';
 
 const MusicPlayer = () => {
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
+  const insets = useSafeAreaInsets();
+  const headerTopPadding = Platform.OS === 'android' ? Math.max(insets.top + 8, 18) : Math.max(insets.top + 8, 16);
   const contentBottomPadding = useBottomContentPadding(24);
   const { width } = useWindowDimensions();
 
@@ -143,7 +146,7 @@ const MusicPlayer = () => {
   };
 
   const renderPinnedTop = () => (
-    <View style={tw`px-5 pt-6 pb-4`}>
+    <View style={[tw`px-5 pb-4`, { paddingTop: headerTopPadding }]}>
       <View style={tw`flex-row items-center mb-4`}>
         <MusicalNoteIcon size={28} color="#EA9215" />
         <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
@@ -268,7 +271,7 @@ const MusicPlayer = () => {
 
   return (
     <View style={dynamicStyles.container}>
-      <SafeAreaView style={tw`flex-1`} edges={['top']}>
+      <SafeAreaView style={tw`flex-1`} edges={['left', 'right']}>
         {renderPinnedTop()}
         <FlatList
           data={links}
