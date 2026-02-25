@@ -55,17 +55,12 @@ const SongDetail = () => {
     }
   }, [dispatch, favoritesLoaded]);
 
-  // Fetch full song data from API to get sheet_music and audio
+  // Fetch full song data from cache/API to get sheet_music and audio
   useEffect(() => {
     const fetchFullSongData = async () => {
       try {
-        const allSongs = await hymnalService.getSDAHymns();
-        const foundSong = allSongs.find((s: SDAHymn) => 
-          s.newHymnalTitle === song.title || s.title === song.title
-        );
-        if (foundSong) {
-          setFullSongData(foundSong);
-        }
+        const foundSong = await hymnalService.getSDAHymnByTitle(song.title);
+        setFullSongData(foundSong);
       } catch (error) {
         console.error('Error fetching full song data:', error);
       }

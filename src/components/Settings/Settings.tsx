@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Switch, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState, setFontSize, toggleDarkModeWithPersistence, AppDispatch } from '../../store';
+import { RootState, setFontSize, setFontSizeWithPersistence, toggleDarkModeWithPersistence, AppDispatch } from '../../store';
 import { Cog6ToothIcon, MusicalNoteIcon, BookOpenIcon, HeartIcon, ArrowPathIcon } from 'react-native-heroicons/outline';
 import { getCardStyle } from '../../utils/platformUtils';
 import { hymnalService } from '../../services/hymnalService';
+import { syncService } from '../../services/syncService';
+import { notificationService } from '../../services/notificationService';
 import tw from '../../../tailwind';
 import { useBottomContentPadding } from '../../utils/platformUtils';
 
@@ -15,7 +18,22 @@ const Settings = () => {
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
   const dispatch = useDispatch<AppDispatch>();
   const [isUpdating, setIsUpdating] = useState(false);
+  const [lastSyncTimestamp, setLastSyncTimestamp] = useState<number | null>(null);
+  const [notificationTime, setNotificationTime] = useState<{ hour: number; minute: number; formatted: string } | null>(null);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const contentBottomPadding = useBottomContentPadding(24);
+
+  useEffect(() => {
+    const loadMeta = async () => {
+      const [lastSync, reminderTime] = await Promise.all([
+        syncService.getLastSyncTimestamp(),
+        notificationService.getStoredReminderTime(),
+      ]);
+      setLastSyncTimestamp(lastSync);
+      setNotificationTime(reminderTime);
+    };
+    loadMeta();
+  }, []);
 
   const handleToggleTheme = () => {
     dispatch(toggleDarkModeWithPersistence());
@@ -25,6 +43,8 @@ const Settings = () => {
     try {
       setIsUpdating(true);
       await hymnalService.forceUpdate();
+      const latest = await syncService.getLastSyncTimestamp();
+      setLastSyncTimestamp(latest);
       Alert.alert('Success', 'Songs updated successfully!');
     } catch (error) {
       Alert.alert('Error', 'Failed to update songs. Please try again later.');
@@ -33,6 +53,26 @@ const Settings = () => {
       setIsUpdating(false);
     }
   };
+
+  const handleNotificationTimeChange = async (_: any, selectedDate?: Date) => {
+    setShowTimePicker(false);
+    if (!selectedDate) return;
+
+    const hour = selectedDate.getHours();
+    const minute = selectedDate.getMinutes();
+    await notificationService.scheduleDailyReminder(hour, minute);
+    setNotificationTime({
+      hour,
+      minute,
+      formatted: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
+    });
+  };
+
+  const lastUpdatedLabel = useMemo(() => {
+    if (!lastSyncTimestamp) return 'Never updated';
+    const date = new Date(lastSyncTimestamp);
+    return date.toLocaleString();
+  }, [lastSyncTimestamp]);
 
   return (
     <View style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}>
@@ -68,6 +108,7 @@ const Settings = () => {
                   maximumValue={32}
                   value={fontSize}
                   onValueChange={value => dispatch(setFontSize(value))}
+                  onSlidingComplete={value => dispatch(setFontSizeWithPersistence(value))}
                   minimumTrackTintColor="#EA9215"
                   maximumTrackTintColor={isDarkMode ? '#3A4750' : '#EEEEEE'}
                 />
@@ -109,6 +150,9 @@ const Settings = () => {
               <Text style={tw`text-sm mb-4 opacity-70 ${isDarkMode ? 'text-dark-secondary-2' : 'text-secondary-9'}`}>
                 Get the latest songs from the server
               </Text>
+              <Text style={tw`text-xs mb-4 opacity-70 ${isDarkMode ? 'text-dark-secondary-3' : 'text-secondary-8'}`}>
+                Last updated: {lastUpdatedLabel}
+              </Text>
               <TouchableOpacity
                 onPress={handleUpdateSongs}
                 disabled={isUpdating}
@@ -127,6 +171,42 @@ const Settings = () => {
                   {isUpdating ? 'Updating...' : 'Update Now'}
                 </Text>
               </TouchableOpacity>
+            </View>
+
+            {/* Daily Reminder Section */}
+            <View style={[
+              tw`p-5 mb-5 rounded-xl ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
+              getCardStyle()
+            ]}>
+              <Text style={tw`text-xl font-nokia-bold mb-3 text-accent-6`}>Daily Reminder</Text>
+              <Text style={tw`text-sm mb-4 opacity-70 ${isDarkMode ? 'text-dark-secondary-2' : 'text-secondary-9'}`}>
+                Set a daily reminder to open today’s hymn.
+              </Text>
+              <View style={tw`flex-row items-center justify-between`}>
+                <View>
+                  <Text style={tw`text-base ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
+                    Reminder time
+                  </Text>
+                  <Text style={tw`text-sm opacity-70 ${isDarkMode ? 'text-dark-secondary-2' : 'text-secondary-9'}`}>
+                    {notificationTime?.formatted ?? '07:00'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setShowTimePicker(true)}
+                  style={[tw`px-4 py-2 rounded-lg bg-accent-6`, getCardStyle()]}
+                >
+                  <Text style={tw`text-white font-nokia-bold`}>Change</Text>
+                </TouchableOpacity>
+              </View>
+              {showTimePicker ? (
+                <DateTimePicker
+                  mode="time"
+                  value={notificationTime
+                    ? new Date(0, 0, 0, notificationTime.hour, notificationTime.minute)
+                    : new Date(0, 0, 0, 7, 0)}
+                  onChange={handleNotificationTimeChange}
+                />
+              ) : null}
             </View>
 
             {/* About Section */}

@@ -13,7 +13,7 @@ import { Provider, useSelector, useDispatch } from 'react-redux';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar, Platform, Text, TextInput } from 'react-native';
-import store, { RootState, loadTheme, AppDispatch } from './src/store';
+import store, { RootState, loadTheme, loadFontSize, AppDispatch } from './src/store';
 import { getNokiaFontName } from './src/utils/platformUtils';
 import SongList from './src/components/SongList';
 import SongDetail from './src/components/SongDetail';
@@ -30,6 +30,9 @@ import { HagerignaHymn } from './src/services/hymnalService';
 import Toast from 'react-native-toast-message';
 import FontDebug from './src/components/FontDebug';
 import SystemNavigationBar from 'react-native-system-navigation-bar';
+import { notificationService } from './src/services/notificationService';
+import { navigationRef } from './src/navigation/navigationRef';
+import notifee, { EventType } from '@notifee/react-native';
 
 // Force global default Nokia font for all Text and TextInput components
 const _defaultNokiaFont = getNokiaFontName('regular');
@@ -185,15 +188,33 @@ const AppContent = () => {
   useEffect(() => {
     // Load saved theme when app starts
     dispatch(loadTheme());
+    dispatch(loadFontSize());
     
     // Check for updates when app starts
     syncService.checkForUpdates();
 
-    // Set up network listener
-    const unsubscribe = NetInfo.addEventListener(state => {
-      if (state.isConnected) {
-        syncService.checkForUpdates();
+    // Ensure daily reminder is scheduled
+    notificationService.ensureDailyReminder().catch(() => {
+      // Non-fatal; user can re-enable in settings.
+    });
+
+    // Handle notification events while app is in foreground
+    const unsubscribe = notifee.onForegroundEvent(async ({ type, detail }) => {
+      if (type === EventType.PRESS) {
+        await notificationService.handleNotificationPress(detail.notification?.data);
       }
+      if (type === EventType.DELIVERED) {
+        await notificationService.scheduleNextDailyReminder();
+      }
+    });
+
+    // Handle notification that launched the app
+    notifee.getInitialNotification().then((initial) => {
+      if (initial?.pressAction) {
+        notificationService.handleNotificationPress(initial.notification?.data);
+      }
+    }).catch(() => {
+      // Ignore.
     });
 
     return () => {
@@ -248,6 +269,12 @@ const AppContent = () => {
         <FontDebug />
       ) : (
         <NavigationContainer
+          ref={navigationRef}
+          onReady={() => {
+            notificationService.consumePendingNavigation().catch(() => {
+              // Ignore.
+            });
+          }}
           theme={{
             dark: isDarkMode,
             colors: {

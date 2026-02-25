@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import api from './api';
 
-const LAST_SYNC_KEY = 'last_sync_timestamp';
+export const LAST_SYNC_KEY = 'last_sync_timestamp';
 
 export const syncService = {
   async checkForUpdates() {
@@ -89,6 +89,18 @@ export const syncService = {
     } catch (error) {
       if (__DEV__) {
         console.error(`Error getting local ${type} data:`, error);
+      }
+      return null;
+    }
+  },
+
+  async getLastSyncTimestamp() {
+    try {
+      const lastSync = await AsyncStorage.getItem(LAST_SYNC_KEY);
+      return lastSync ? parseInt(lastSync, 10) : null;
+    } catch (error) {
+      if (__DEV__) {
+        console.error('Error getting last sync timestamp:', error);
       }
       return null;
     }

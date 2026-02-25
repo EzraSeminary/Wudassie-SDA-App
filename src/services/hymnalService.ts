@@ -1,5 +1,6 @@
-import { API_BASE_URL } from '../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from './api';
+import { LAST_SYNC_KEY } from './syncService';
 
 export interface HagerignaHymn {
   id: string;
@@ -28,22 +29,39 @@ export interface SDAHymn {
 
 export type HymnalType = 'hagerigna' | 'sda';
 
-class HymnalService {
-  private baseUrl = API_BASE_URL;
-  private fetchOptions = {
-    headers: {
-      'Content-Type': 'application/json',
+/** Extract array from API response without changing order (MongoDB order preserved). */
+function getOrderedArray<T>(payload: unknown): T[] {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+  if (payload && typeof payload === 'object') {
+    const obj = payload as Record<string, unknown>;
+    const arr = obj.data ?? obj.items ?? obj.results ?? obj.hymns;
+    if (Array.isArray(arr)) {
+      return arr;
     }
-  };
+  }
+  return [];
+}
+
+class HymnalService {
+  async getHagerignaHymnsFromApi(): Promise<HagerignaHymn[]> {
+    const response = await api.get('/hagerigna');
+    const data = getOrderedArray<HagerignaHymn>(response.data);
+    await AsyncStorage.setItem('hagerigna', JSON.stringify(data));
+    return data;
+  }
+
+  async getSDAHymnsFromApi(): Promise<SDAHymn[]> {
+    const response = await api.get('/sda');
+    const data = getOrderedArray<SDAHymn>(response.data);
+    await AsyncStorage.setItem('hymnal', JSON.stringify(data));
+    return data;
+  }
 
   async getHagerignaHymns(): Promise<HagerignaHymn[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/hagerigna`, this.fetchOptions);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch Hagerigna hymns: ${response.status}`);
-      }
-      const data = await response.json();
-      await AsyncStorage.setItem('hagerigna', JSON.stringify(data));
+      const data = await this.getHagerignaHymnsFromApi();
       if (__DEV__) {
         console.log('Hagerigna hymns updated successfully');
       }
@@ -52,7 +70,6 @@ class HymnalService {
       if (__DEV__) {
         console.error('Error fetching Hagerigna hymns:', error);
       }
-      // Try to get cached data if fetch fails
       const cachedData = await AsyncStorage.getItem('hagerigna');
       if (cachedData) {
         if (__DEV__) {
@@ -66,12 +83,7 @@ class HymnalService {
 
   async getSDAHymns(): Promise<SDAHymn[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/sda`, this.fetchOptions);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch SDA hymns: ${response.status}`);
-      }
-      const data = await response.json();
-      await AsyncStorage.setItem('hymnal', JSON.stringify(data));
+      const data = await this.getSDAHymnsFromApi();
       if (__DEV__) {
         console.log('SDA hymns updated successfully');
       }
@@ -80,7 +92,6 @@ class HymnalService {
       if (__DEV__) {
         console.error('Error fetching SDA hymns:', error);
       }
-      // Try to get cached data if fetch fails
       const cachedData = await AsyncStorage.getItem('hymnal');
       if (cachedData) {
         if (__DEV__) {
@@ -94,11 +105,8 @@ class HymnalService {
 
   async searchHymns(query: string, type: HymnalType): Promise<HagerignaHymn[] | SDAHymn[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/${type}/search?q=${encodeURIComponent(query)}`);
-      if (!response.ok) {
-        throw new Error(`Failed to search ${type} hymns`);
-      }
-      return await response.json();
+      const response = await api.get(`/${type}/search?q=${encodeURIComponent(query)}`);
+      return response.data;
     } catch (error) {
       if (__DEV__) {
         console.error(`Error searching ${type} hymns:`, error);
@@ -116,6 +124,8 @@ class HymnalService {
         this.getHagerignaHymns(),
         this.getSDAHymns()
       ]);
+
+      await AsyncStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
 
       return {
         hagerigna: hagerignaData,
@@ -142,6 +152,37 @@ class HymnalService {
       }
       return null;
     }
+  }
+
+  async getLocalSDAHymns(): Promise<SDAHymn[] | null> {
+    try {
+      const cachedData = await AsyncStorage.getItem('hymnal');
+      if (cachedData) {
+        return JSON.parse(cachedData);
+      }
+      return null;
+    } catch (error) {
+      if (__DEV__) {
+        console.error('Error getting local SDA hymns:', error);
+      }
+      return null;
+    }
+  }
+
+  async getSDAHymnByTitle(title: string): Promise<SDAHymn | null> {
+    const local = await this.getLocalSDAHymns();
+    if (local && local.length > 0) {
+      const foundLocal = local.find(
+        (song) => song.newHymnalTitle === title || song.title === title || song.oldHymnalTitle === title
+      );
+      if (foundLocal) return foundLocal;
+    }
+
+    const remote = await this.getSDAHymns();
+    const foundRemote = remote.find(
+      (song) => song.newHymnalTitle === title || song.title === title || song.oldHymnalTitle === title
+    );
+    return foundRemote ?? null;
   }
 }
 

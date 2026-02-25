@@ -2,7 +2,7 @@ import React, {useEffect, useMemo, useState} from 'react';
 import {FlatList, Text, View, TextInput, TouchableWithoutFeedback, TouchableOpacity} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-//
+import NetInfo from '@react-native-community/netinfo';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {useSelector, useDispatch} from 'react-redux';
 import {RootState, AppDispatch} from '../store';
@@ -14,6 +14,7 @@ import { HeartIcon as OutlineHeartIcon } from 'react-native-heroicons/outline';
 import NumpadModal from './NumpadModal';
 import { getCardStyle, useFloatingButtonLayout } from '../utils/platformUtils';
 import {loadFavorites, toggleFavorite} from '../store/favoritesSlice';
+import { hymnalService, SDAHymn } from '../services/hymnalService';
 import tw from '../../tailwind';
 
 type Song = {
@@ -34,12 +35,102 @@ const SongList = () => {
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
   const dispatch: AppDispatch = useDispatch();
   const { favoriteIds = [], isLoaded: favoritesLoaded = false } = useSelector((state: RootState) => state.favorites) || {};
+  const [songs, setSongs] = useState<Song[]>([]);
 
   useEffect(() => {
     if (!favoritesLoaded) {
       dispatch(loadFavorites());
     }
   }, [dispatch, favoritesLoaded]);
+
+  useEffect(() => {
+    const parseLocalJson = (): Song[] => {
+      try {
+        const newTitles = hymnalData.resources.array[0].item;
+        const englishTitles = hymnalData.resources.array[3].item;
+        const newSongs = hymnalData.resources.array[2].item;
+
+        return newTitles.map((title: string, index: number) => ({
+          id: `hymnal-${index + 1}`,
+          title,
+          englishTitle: englishTitles[index] || '',
+          lyrics: newSongs[index],
+        }));
+      } catch (err) {
+        if (__DEV__) {
+          console.error('Error reading JSON file:', err);
+        }
+        return [];
+      }
+    };
+
+    const mapApiSongs = (items: SDAHymn[]): Song[] => {
+      const getSdaIdOrder = (id?: string): number => {
+        const match = String(id || '').match(/^sda-(\d+)$/);
+        return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
+      };
+
+      // Canonical order comes from numeric part of id: sda-0, sda-1, ...
+      // This makes Mongo id sequencing the source of truth for listing.
+      const sortedItems = items
+        .map((item, originalIndex) => ({
+          item,
+          originalIndex,
+          idOrder: getSdaIdOrder(item.id),
+        }))
+        .sort((a, b) => {
+          if (a.idOrder === b.idOrder) {
+            return a.originalIndex - b.originalIndex;
+          }
+          return a.idOrder - b.idOrder;
+        })
+        .map(({ item }) => item);
+
+      return sortedItems.map((item, index) => {
+        const idOrder = getSdaIdOrder(item.id);
+        const resolvedNumber = Number.isFinite(idOrder) && idOrder !== Number.MAX_SAFE_INTEGER
+          ? idOrder + 1
+          : (item.number ?? index + 1);
+        const title = item.newHymnalTitle || item.title || item.oldHymnalTitle || `Song ${resolvedNumber}`;
+        const lyrics = item.newHymnalLyrics || item.lyrics || item.oldHymnalLyrics || '';
+        return {
+          id: item.id ? `${item.id}` : `hymnal-${resolvedNumber}`,
+          title,
+          englishTitle: item.englishTitleOld || '',
+          lyrics,
+        };
+      });
+    };
+
+    const loadSongs = async () => {
+      const netState = await NetInfo.fetch();
+      const isOnline = Boolean(netState.isConnected && netState.isInternetReachable !== false);
+
+      if (isOnline) {
+        try {
+          const apiData = await hymnalService.getSDAHymnsFromApi();
+          if (apiData && apiData.length > 0) {
+            setSongs(mapApiSongs(apiData));
+            return;
+          }
+        } catch (e) {
+          if (__DEV__) {
+            console.error('Failed to fetch SDA hymns, using cache/local', e);
+          }
+        }
+      }
+
+      const cached = await hymnalService.getLocalSDAHymns();
+      if (cached && cached.length > 0) {
+        setSongs(mapApiSongs(cached));
+        return;
+      }
+
+      setSongs(parseLocalJson());
+    };
+
+    loadSongs();
+  }, []);
 
   const handleOpenNumpad = () => setNumpadVisible(true);
   const handleCloseNumpad = () => setNumpadVisible(false);
@@ -53,26 +144,6 @@ const SongList = () => {
   const handleToggleFavorite = (songId: string, songTitle: string) => {
     dispatch(toggleFavorite(songId, songTitle));
   };
-
-  const songs = useMemo<Song[]>(() => {
-    try {
-      const newTitles = hymnalData.resources.array[0].item; // Amharic titles array
-      const englishTitles = hymnalData.resources.array[3].item; // English titles array
-      const newSongs = hymnalData.resources.array[2].item; // Lyrics array
-
-      return newTitles.map((title: string, index: number) => ({
-        id: `hymnal-${index + 1}`,
-        title,
-        englishTitle: englishTitles[index] || '',
-        lyrics: newSongs[index],
-      }));
-    } catch (err) {
-      if (__DEV__) {
-        console.error('Error reading JSON file:', err);
-      }
-      return [];
-    }
-  }, []);
 
   const filteredSongs = useMemo(() => {
     if (searchQuery.trim() === '') return songs;

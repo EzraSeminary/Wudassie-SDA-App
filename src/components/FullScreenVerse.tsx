@@ -17,6 +17,7 @@ import tw from '../../tailwind';
 import Orientation from 'react-native-orientation-locker';
 import { useNavigation } from '@react-navigation/native';
 import Slider from '@react-native-community/slider';
+import KeepAwake from 'react-native-keep-awake';
 
 interface FullScreenVerseProps {
   song: {
@@ -180,6 +181,7 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
   return (
     <View style={tw`absolute inset-0 z-50`}>
       <StatusBar hidden />
+      <KeepAwake />
       <SafeAreaView 
         style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}
         edges={['left', 'right']}

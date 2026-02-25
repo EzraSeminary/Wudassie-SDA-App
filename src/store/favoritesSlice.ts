@@ -6,11 +6,13 @@ import Toast from 'react-native-toast-message';
 interface FavoritesState {
   favoriteIds: string[];
   isLoaded: boolean;
+  isLoading: boolean;
 }
 
 const initialState: FavoritesState = {
   favoriteIds: [],
   isLoaded: false,
+  isLoading: false,
 };
 
 const favoritesSlice = createSlice({
@@ -18,11 +20,12 @@ const favoritesSlice = createSlice({
   initialState,
   reducers: {
     setFavoritesLoading: (state, action: PayloadAction<boolean>) => {
-        state.isLoaded = !action.payload;
+        state.isLoading = action.payload;
     },
     setFavorites: (state, action: PayloadAction<string[]>) => {
         state.favoriteIds = action.payload;
         state.isLoaded = true;
+        state.isLoading = false;
     },
     addFavorite: (state, action: PayloadAction<string>) => {
       if (!state.favoriteIds.includes(action.payload)) {
@@ -79,7 +82,7 @@ export const toggleFavorite = (songId: string, songTitle?: string): AppThunk => 
       console.log('Current favorites state:', favorites);
     }
     
-    if (!favorites.isLoaded) {
+    if (!favorites.isLoaded && !favorites.isLoading) {
         if (__DEV__) {
           console.warn('Favorites not loaded yet, loading first...');
         }

@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import NetInfo from '@react-native-community/netinfo';
 import { useFloatingButtonLayout } from '../../utils/platformUtils';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
@@ -77,38 +78,39 @@ const HagerignaList = () => {
   };
 
   useEffect(() => {
-    const loadInitialData = async () => {
-      let initialSongs: HagerignaHymn[] = [];
-      const cachedSongs = await hymnalService.getLocalHagerignaHymns();
+    const loadSongs = async () => {
+      setLoading(true);
+      setError(null);
 
-      if (cachedSongs && cachedSongs.length > 0) {
-        initialSongs = cachedSongs;
-      } else {
-        initialSongs = parseLocalJson();
-      }
+      const netState = await NetInfo.fetch();
+      const isOnline = Boolean(netState.isConnected && netState.isInternetReachable !== false);
 
-      if (initialSongs.length > 0) {
-        setSongs(initialSongs);
-      } else {
-        setLoading(true); // Only show loading if there is no data at all
-      }
-    };
-
-    const fetchApiData = async () => {
-      try {
-        const apiSongs = await hymnalService.getHagerignaHymns();
-        setSongs(apiSongs);
-      } catch (e) {
-        if (__DEV__) {
-          console.error('Failed to fetch API updates for Hagerigna hymns', e);
+      if (isOnline) {
+        try {
+          const apiSongs = await hymnalService.getHagerignaHymnsFromApi();
+          if (apiSongs && apiSongs.length > 0) {
+            setSongs(apiSongs);
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          if (__DEV__) {
+            console.error('Failed to fetch Hagerigna hymns, using cache/local', e);
+          }
+          setError('Failed to fetch updates. Showing cached or local version.');
         }
-        setError('Failed to fetch updates. Showing local version.');
-      } finally {
-        setLoading(false);
       }
+
+      const cachedSongs = await hymnalService.getLocalHagerignaHymns();
+      if (cachedSongs && cachedSongs.length > 0) {
+        setSongs(cachedSongs);
+      } else {
+        setSongs(parseLocalJson());
+      }
+      setLoading(false);
     };
 
-    loadInitialData().then(fetchApiData);
+    loadSongs();
   }, []);
 
   const normalizedSongs = useMemo(() => {
