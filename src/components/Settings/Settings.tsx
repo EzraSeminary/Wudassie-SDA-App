@@ -36,7 +36,7 @@ const Settings = () => {
 
   return (
     <View style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}>
-      <SafeAreaView style={tw`flex-1`}>
+      <SafeAreaView style={tw`flex-1`} edges={['top']}>
         <ScrollView
           showsVerticalScrollIndicator={false}
           scrollEnabled={true}

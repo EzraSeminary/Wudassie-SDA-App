@@ -268,7 +268,7 @@ const MusicPlayer = () => {
 
   return (
     <View style={dynamicStyles.container}>
-      <SafeAreaView style={tw`flex-1`}>
+      <SafeAreaView style={tw`flex-1`} edges={['top']}>
         {renderPinnedTop()}
         <FlatList
           data={links}

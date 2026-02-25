@@ -140,7 +140,7 @@ const SongList = () => {
 
   return (
     <View style={tw`flex-1 mt-8 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}>
-      <SafeAreaView style={tw`flex-1`}>
+      <SafeAreaView style={tw`flex-1`} edges={['top']}>
         {/* Fixed Header */}
         <View style={[tw`flex-row items-center justify-between px-4 py-4`,]}>
           <View style={tw`flex-row items-center flex-1`}>

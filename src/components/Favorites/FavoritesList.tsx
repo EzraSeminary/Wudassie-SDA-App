@@ -187,7 +187,7 @@ const FavoritesList = () => {
   if (currentFavorites.length === 0) {
     return (
       <View style={dynamicStyles.container}>
-        <SafeAreaView style={tw`flex-1`}>
+        <SafeAreaView style={tw`flex-1`} edges={['top']}>
           <View style={dynamicStyles.header}>
             <MusicalNoteIcon size={28} color="#EA9215" />
             <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
@@ -238,7 +238,7 @@ const FavoritesList = () => {
 
   return (
     <View style={dynamicStyles.container}>
-      <SafeAreaView style={tw`flex-1`}>
+      <SafeAreaView style={tw`flex-1`} edges={['top']}>
         <View style={dynamicStyles.header}>
           <MusicalNoteIcon size={28} color="#EA9215" />
           <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>

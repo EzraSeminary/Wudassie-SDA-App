@@ -29,6 +29,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { HagerignaHymn } from './src/services/hymnalService';
 import Toast from 'react-native-toast-message';
 import FontDebug from './src/components/FontDebug';
+import SystemNavigationBar from 'react-native-system-navigation-bar';
 
 // Force global default Nokia font for all Text and TextInput components
 const _defaultNokiaFont = getNokiaFontName('regular');
@@ -205,6 +206,23 @@ const AppContent = () => {
     if (__DEV__) {
       console.log('Theme changed to:', isDarkMode ? 'dark' : 'light');
     }
+  }, [isDarkMode]);
+
+  // Keep Android system navigation bar in sync with app theme.
+  useEffect(() => {
+    if (Platform.OS !== 'android') {
+      return;
+    }
+
+    const navColor = isDarkMode ? '#1A2024' : '#FDFDFD';
+    const barMode = isDarkMode ? 'light' : 'dark';
+
+    SystemNavigationBar.setNavigationColor(navColor, barMode, 'navigation').catch(() => {
+      // Non-fatal: some devices/ROMs may restrict system bar styling.
+    });
+    SystemNavigationBar.setNavigationBarContrastEnforced(false).catch(() => {
+      // Ignore when API level does not support it.
+    });
   }, [isDarkMode]);
 
   const handleSplashFinish = () => {
