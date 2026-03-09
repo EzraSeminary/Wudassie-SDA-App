@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Light theme colors -->
+    <color name="app_background">#FDFDFD</color>
+    <color name="status_bar">#FDFDFD</color>
+    <color name="navigation_bar">#FDFDFD</color>
+</resources>

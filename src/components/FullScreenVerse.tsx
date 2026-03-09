@@ -9,13 +9,15 @@ import {
   Platform,
   TouchableOpacity
 } from 'react-native';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowsPointingInIcon, ChevronLeftIcon, ChevronRightIcon } from 'react-native-heroicons/outline';
-import { RootState } from '../store';
+import { ArrowsPointingInIcon, ChevronLeftIcon, ChevronRightIcon, AdjustmentsHorizontalIcon } from 'react-native-heroicons/outline';
+import { RootState, setFontSize } from '../store';
 import tw from '../../tailwind';
 import Orientation from 'react-native-orientation-locker';
 import { useNavigation } from '@react-navigation/native';
+import Slider from '@react-native-community/slider';
+import KeepAwake from 'react-native-keep-awake';
 
 interface FullScreenVerseProps {
   song: {
@@ -37,10 +39,12 @@ interface LyricSection {
 const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onClose }) => {
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
   const fontSize = useSelector((state: RootState) => state.fontSize.fontSize);
+  const dispatch = useDispatch();
   const navigation = useNavigation();
   const [currentSection, setCurrentSection] = useState(0);
   const [lyricSections, setLyricSections] = useState<LyricSection[]>([]);
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
+  const [isFontSizePopupVisible, setIsFontSizePopupVisible] = useState(false);
 
   // This effect handles showing/hiding the tab bar and status bar
   useEffect(() => {
@@ -140,6 +144,8 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
     }
   }, [isVisible, song, handleClose]);
 
+
+
   const goToNext = () => {
     if (currentSection < lyricSections.length - 1) {
       setCurrentSection(currentSection + 1);
@@ -151,6 +157,9 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
       setCurrentSection(currentSection - 1);
     }
   };
+
+  const handleOpenFontSizePopup = () => setIsFontSizePopupVisible(true);
+  const handleCloseFontSizePopup = () => setIsFontSizePopupVisible(false);
 
   if (!isVisible) {
     return null;
@@ -172,6 +181,7 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
   return (
     <View style={tw`absolute inset-0 z-50`}>
       <StatusBar hidden />
+      <KeepAwake />
       <SafeAreaView 
         style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}
         edges={['left', 'right']}
@@ -190,6 +200,17 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
                 } - {currentSection + 1} of {lyricSections.length}
               </Text>
             </View>
+            
+            {/* Font Size Button */}
+            <TouchableWithoutFeedback onPress={handleOpenFontSizePopup}>
+              <View style={tw`p-2 mr-2`}>
+                <AdjustmentsHorizontalIcon 
+                  size={24} 
+                  color={isDarkMode ? '#FDFDFD' : '#1A2024'} 
+                />
+              </View>
+            </TouchableWithoutFeedback>
+            
             <TouchableWithoutFeedback onPress={handleClose}>
               <View style={tw`p-2`}>
                 <ArrowsPointingInIcon 
@@ -270,6 +291,39 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
           </View>
         </View>
       </SafeAreaView>
+
+      {/* Font Size Popup Overlay */}
+      {isFontSizePopupVisible && (
+        <View style={tw`absolute inset-0 z-50 justify-center items-center bg-black bg-opacity-50`}>
+          <View style={tw`w-96 p-8 rounded-xl items-center ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-1'}`}>
+            <Text style={tw`text-2xl font-nokia-bold mb-8 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
+              Adjust Font Size
+            </Text>
+            <Slider
+              style={tw`w-80 h-12 mb-8`}
+              minimumValue={12}
+              maximumValue={40}
+              value={fontSize}
+              onValueChange={(value) => dispatch(setFontSize(value))}
+              minimumTrackTintColor="#EA9215"
+              maximumTrackTintColor={isDarkMode ? '#3A4750' : '#EEEEEE'}
+            />
+            <View style={tw`flex-row items-center justify-between w-80 mb-8`}>
+              <Text style={tw`text-base font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>Small</Text>
+              <Text style={tw`text-base font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>Large</Text>
+            </View>
+            <Text style={[tw`text-center font-nokia-bold mb-8 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`, { fontSize }]}>
+              የሱስ ክርስቶስ የኔ ወዳጅ
+            </Text>
+            <TouchableOpacity 
+              onPress={handleCloseFontSizePopup}
+              style={tw`bg-accent-6 px-8 py-4 rounded-lg`}
+            >
+              <Text style={tw`text-white font-nokia-bold text-lg`}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </View>
   );
 };

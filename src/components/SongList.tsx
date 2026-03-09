@@ -1,32 +1,141 @@
-import React, {useEffect, useState} from 'react';
-import {FlatList, Text, View, TextInput, TouchableWithoutFeedback, Platform} from 'react-native';
+import React, {useEffect, useMemo, useState} from 'react';
+import {FlatList, Text, View, TextInput, TouchableWithoutFeedback, TouchableOpacity, Platform} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {useSelector} from 'react-redux';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {RootState} from '../store';
+import NetInfo from '@react-native-community/netinfo';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {useSelector, useDispatch} from 'react-redux';
+import {RootState, AppDispatch} from '../store';
 import {RootStackParamList} from '../../App';
 import hymnalData from './SDA_Hymnal.json';
-import { BookOpenIcon, HashtagIcon, MagnifyingGlassIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import { BookOpenIcon, MagnifyingGlassIcon as OutlineSearchIcon, XMarkIcon as SolidXMarkIcon } from 'react-native-heroicons/outline';
+import { HeartIcon as SolidHeartIcon, HashtagIcon as SolidHashtagIcon } from 'react-native-heroicons/solid';
+import { HeartIcon as OutlineHeartIcon } from 'react-native-heroicons/outline';
 import NumpadModal from './NumpadModal';
-import { getCardStyle } from '../utils/platformUtils';
+import { getCardStyle, useFloatingButtonLayout } from '../utils/platformUtils';
+import {loadFavorites, toggleFavorite} from '../store/favoritesSlice';
+import { hymnalService, SDAHymn } from '../services/hymnalService';
 import tw from '../../tailwind';
 
 type Song = {
+  id: string;
   title: string;
+  englishTitle: string;
   lyrics: string;
 };
 
 type SongListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SongList'>;
 
 const SongList = () => {
-  const [songs, setSongs] = useState<Song[]>([]);
-  const [filteredSongs, setFilteredSongs] = useState<Song[]>([]);
+  const { floatingButtonBottom, listBottomPadding } = useFloatingButtonLayout();
+  const insets = useSafeAreaInsets();
   const [isNumpadVisible, setNumpadVisible] = useState(false);
+  const headerTopPadding = Platform.OS === 'android'
+    ? Math.max(insets.top + 8, 18)
+    : Math.max(insets.top + 8, 16);
+
   const [isSearchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const navigation = useNavigation<SongListNavigationProp>();
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
+  const dispatch: AppDispatch = useDispatch();
+  const { favoriteIds = [], isLoaded: favoritesLoaded = false } = useSelector((state: RootState) => state.favorites) || {};
+  const [songs, setSongs] = useState<Song[]>([]);
+
+  useEffect(() => {
+    if (!favoritesLoaded) {
+      dispatch(loadFavorites());
+    }
+  }, [dispatch, favoritesLoaded]);
+
+  useEffect(() => {
+    const parseLocalJson = (): Song[] => {
+      try {
+        const newTitles = hymnalData.resources.array[0].item;
+        const englishTitles = hymnalData.resources.array[3].item;
+        const newSongs = hymnalData.resources.array[2].item;
+
+        return newTitles.map((title: string, index: number) => ({
+          id: `hymnal-${index + 1}`,
+          title,
+          englishTitle: englishTitles[index] || '',
+          lyrics: newSongs[index],
+        }));
+      } catch (err) {
+        if (__DEV__) {
+          console.error('Error reading JSON file:', err);
+        }
+        return [];
+      }
+    };
+
+    const mapApiSongs = (items: SDAHymn[]): Song[] => {
+      const getSdaIdOrder = (id?: string): number => {
+        const match = String(id || '').match(/^sda-(\d+)$/);
+        return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
+      };
+
+      // Canonical order comes from numeric part of id: sda-0, sda-1, ...
+      // This makes Mongo id sequencing the source of truth for listing.
+      const sortedItems = items
+        .map((item, originalIndex) => ({
+          item,
+          originalIndex,
+          idOrder: getSdaIdOrder(item.id),
+        }))
+        .sort((a, b) => {
+          if (a.idOrder === b.idOrder) {
+            return a.originalIndex - b.originalIndex;
+          }
+          return a.idOrder - b.idOrder;
+        })
+        .map(({ item }) => item);
+
+      return sortedItems.map((item, index) => {
+        const idOrder = getSdaIdOrder(item.id);
+        const resolvedNumber = Number.isFinite(idOrder) && idOrder !== Number.MAX_SAFE_INTEGER
+          ? idOrder + 1
+          : (item.number ?? index + 1);
+        const title = item.newHymnalTitle || item.title || item.oldHymnalTitle || `Song ${resolvedNumber}`;
+        const lyrics = item.newHymnalLyrics || item.lyrics || item.oldHymnalLyrics || '';
+        return {
+          id: item.id ? `${item.id}` : `hymnal-${resolvedNumber}`,
+          title,
+          englishTitle: item.englishTitleOld || '',
+          lyrics,
+        };
+      });
+    };
+
+    const loadSongs = async () => {
+      const netState = await NetInfo.fetch();
+      const isOnline = Boolean(netState.isConnected && netState.isInternetReachable !== false);
+
+      if (isOnline) {
+        try {
+          const apiData = await hymnalService.getSDAHymnsFromApi();
+          if (apiData && apiData.length > 0) {
+            setSongs(mapApiSongs(apiData));
+            return;
+          }
+        } catch (e) {
+          if (__DEV__) {
+            console.error('Failed to fetch SDA hymns, using cache/local', e);
+          }
+        }
+      }
+
+      const cached = await hymnalService.getLocalSDAHymns();
+      if (cached && cached.length > 0) {
+        setSongs(mapApiSongs(cached));
+        return;
+      }
+
+      setSongs(parseLocalJson());
+    };
+
+    loadSongs();
+  }, []);
 
   const handleOpenNumpad = () => setNumpadVisible(true);
   const handleCloseNumpad = () => setNumpadVisible(false);
@@ -34,86 +143,82 @@ const SongList = () => {
     setSearchVisible(!isSearchVisible);
     if (isSearchVisible) {
       setSearchQuery('');
-      setFilteredSongs(songs);
     }
   };
 
-  useEffect(() => {
-    const loadFile = () => {
-      try {
-        const newTitles = hymnalData.resources.array[0].item; // Titles array
-        const newSongs = hymnalData.resources.array[2].item; // Lyrics array
+  const handleToggleFavorite = (songId: string, songTitle: string) => {
+    dispatch(toggleFavorite(songId, songTitle));
+  };
 
-        const combinedSongs = newTitles.map((title: string, index: number) => ({
-          title,
-          lyrics: newSongs[index],
-        }));
-
-        setSongs(combinedSongs);
-        setFilteredSongs(combinedSongs);
-        console.log('Parsed JSON successfully');
-      } catch (err) {
-        console.error('Error reading JSON file:', err);
-      }
-    };
-
-    loadFile();
-  }, []);
-
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredSongs(songs);
-    } else {
-      const filtered = songs.filter((song, _index) =>
-        song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        song.lyrics.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setFilteredSongs(filtered);
-    }
+  const filteredSongs = useMemo(() => {
+    if (searchQuery.trim() === '') return songs;
+    const query = searchQuery.toLowerCase();
+    return songs.filter((song) =>
+      song.title.toLowerCase().includes(query) ||
+      song.englishTitle.toLowerCase().includes(query) ||
+      song.lyrics.toLowerCase().includes(query)
+    );
   }, [searchQuery, songs]);
+
+  const songIndexById = useMemo(() => {
+    return new Map(songs.map((song, index) => [song.id, index]));
+  }, [songs]);
 
   const handleSelect = (song: Song, _index: number) => {
     // Find the original index in the full songs array
-    const originalIndex = songs.findIndex(s => s.title === song.title && s.lyrics === song.lyrics);
+    const originalIndex = songIndexById.get(song.id);
+    if (originalIndex === undefined) return;
     navigation.navigate('SongDetail', {song, songNumber: originalIndex + 1});
   };
 
   const handleJumpToSong = (songNumber: number) => {
     const songIndex = songNumber - 1;
     const song = songs[songIndex];
+    if (!song) return;
     navigation.navigate('SongDetail', {song, songNumber});
   };
 
   const renderSongItem = ({item, index}: {item: Song; index: number}) => {
     // Find the original song number
-    const originalIndex = songs.findIndex(s => s.title === item.title && s.lyrics === item.lyrics);
+    const originalIndex = songIndexById.get(item.id) ?? index;
     const songNumber = originalIndex + 1;
+    const songId = item.id;
+    const isFavorite = favoriteIds.includes(songId);
     
     return (
-      <View style={[
-        tw`flex-row items-center mb-3 mx-4 rounded-xl ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
+      <TouchableOpacity onPress={() => handleSelect(item, index)} style={[
+        tw`flex-row items-center rounded-xl mt-2 mx-4 p-4 ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
         getCardStyle()
       ]}>
-        <TouchableWithoutFeedback onPress={() => handleSelect(item, index)}>
-          <View style={tw`flex-1 p-4`}>
-            <View style={tw`flex-row items-center`}>
-              <Text style={tw`text-lg font-nokia-bold text-2xl ml text-accent-6 min-w-[35px]`}>
-                {songNumber}
-              </Text>
-              <Text style={tw`text-base font-nokia-bold flex-1 text-2xl ml-3 leading-6 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`} numberOfLines={2}>
-                {item.title}
-              </Text>
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
-      </View>
+        <Text style={tw`text-2xl font-nokia-bold mr-4 text-accent-6 min-w-[35px]`}>
+          {songNumber}
+        </Text>
+        <View style={tw`ml-3 flex-1`}>
+          <Text style={tw`text-2xl font-nokia-bold leading-6 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`} numberOfLines={2}>
+            {item.title}
+          </Text>
+          {item.englishTitle && (
+            <Text style={tw`font-nokia-bold mt-1 text-accent-6`} numberOfLines={1}>
+              {item.englishTitle}
+            </Text>
+          )}
+        </View>
+        <TouchableOpacity onPress={(e) => { e.stopPropagation(); handleToggleFavorite(songId, item.title); }} style={tw`p-2 -mr-2`}>
+          {isFavorite ? (
+            <SolidHeartIcon size={24} color={tw.color('red-500')} />
+          ) : (
+            <OutlineHeartIcon size={24} color={tw.color('gray-500')} />
+          )}
+        </TouchableOpacity>
+      </TouchableOpacity>
     );
   };
 
   return (
     <View style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}>
-      <SafeAreaView style={tw`flex-1`} edges={['top']}>
-        <View style={tw`flex-row items-center justify-between px-5 pb-4 pt-4`}>
+      <SafeAreaView style={tw`flex-1`} edges={['left', 'right']}>
+        {/* Fixed Header */}
+        <View style={[tw`flex-row items-center justify-between px-4 pb-4`, { paddingTop: headerTopPadding }]}>
           <View style={tw`flex-row items-center flex-1`}>
             <BookOpenIcon size={28} color="#EA9215" />
             <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
@@ -123,79 +228,75 @@ const SongList = () => {
           <TouchableWithoutFeedback onPress={handleToggleSearch}>
             <View style={tw`p-2`}>
               {isSearchVisible ? (
-                <XMarkIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
+                <SolidXMarkIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
               ) : (
-                <MagnifyingGlassIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
+                <OutlineSearchIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
               )}
             </View>
           </TouchableWithoutFeedback>
         </View>
 
-        {isSearchVisible && (
-          <View style={tw`px-5 pb-4`}>
-            <TextInput
-              style={[
-                tw`h-12 rounded-full px-4 border-2 font-nokia-bold ${isDarkMode ? 'bg-dark-primary-8 border-dark-primary-6 text-dark-secondary-1' : 'bg-primary-3 border-primary-6 text-secondary-10'}`,
-                getCardStyle()
-              ]}
-              placeholder="Search titles or lyrics..."
-              placeholderTextColor={isDarkMode ? '#9CA3AF' : '#6B7280'}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              autoFocus
-            />
-          </View>
-        )}
+        {/* Content */}
+        <View style={tw`flex-1`}>
+          {isSearchVisible && (
+            <View style={tw`px-4 pb-4`}>
+              <TextInput
+                style={[
+                  tw`h-12 rounded-lg px-4 border-2 font-nokia-bold ${isDarkMode ? 'bg-dark-primary-8 border-dark-primary-6 text-dark-secondary-1' : 'bg-primary-3 border-primary-6 text-secondary-10'}`,
+                  getCardStyle()
+                ]}
+                placeholder="Search titles or lyrics..."
+                placeholderTextColor={isDarkMode ? '#9CA3AF' : '#6B7280'}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoFocus
+              />
+            </View>
+          )}
 
-        <FlatList
-          data={filteredSongs}
-          keyExtractor={(item, index) => index.toString()}
-          renderItem={renderSongItem}
-          showsVerticalScrollIndicator={false}
-          scrollEnabled={true}
-          bounces={true}
-          removeClippedSubviews={true}
-          contentContainerStyle={Platform.select({
-            ios: tw`pb-28`,
-            android: tw`pb-32`
-          })}
-          keyboardShouldPersistTaps="handled"
-          ListEmptyComponent={
-            searchQuery ? (
-              <View style={tw`p-8 items-center`}>
-                <Text style={tw`text-lg font-nokia-bold text-center ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`}>
-                  No songs found for "{searchQuery}"
-                </Text>
-              </View>
-            ) : null
-          }
-        />
+          <FlatList
+            data={filteredSongs}
+            keyExtractor={(item) => item.id}
+            renderItem={renderSongItem}
+            showsVerticalScrollIndicator={false}
+            scrollEnabled={true}
+            bounces={true}
+            removeClippedSubviews={true}
+            contentContainerStyle={[{ paddingBottom: listBottomPadding }]}
+            keyboardShouldPersistTaps="handled"
+            ListEmptyComponent={
+              searchQuery ? (
+                <View style={tw`py-8 px-4 items-center`}>
+                  <Text style={tw`text-lg text-center font-nokia-bold ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`}>
+                    No songs found for "{searchQuery}"
+                  </Text>
+                </View>
+              ) : null
+            }
+          />
+        </View>
       </SafeAreaView>
 
-      {/* Floating Numpad Button */}
-      <TouchableWithoutFeedback onPress={handleOpenNumpad}>
-        <View style={[
-          tw`absolute right-5 bg-accent-6 rounded-full p-4 shadow-lg`,
-          Platform.select({
-            ios: {
-              bottom: 100,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 4,
-            },
-            android: {
-              bottom: 100,
-              elevation: 8,
-            }
-          }),
-          getCardStyle()
-        ]}>
-          <HashtagIcon size={24} color="#FDFDFD" />
-        </View>
-      </TouchableWithoutFeedback>
+      {/* Floating Circular Numpad Button */}
+      <TouchableOpacity
+        onPress={handleOpenNumpad}
+        style={[
+          tw`absolute right-5 w-16 h-16 bg-accent-6 rounded-full items-center justify-center`,
+          { bottom: floatingButtonBottom },
+          {
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+            elevation: 4,
+          },
+        ]}
+        activeOpacity={0.8}
+      >
+        <SolidHashtagIcon size={28} color="#FDFDFD" />
+      </TouchableOpacity>
 
-      <NumpadModal 
+      <NumpadModal
         visible={isNumpadVisible}
         onClose={handleCloseNumpad}
         onJumpToSong={handleJumpToSong}

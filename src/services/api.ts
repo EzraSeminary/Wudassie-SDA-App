@@ -5,7 +5,8 @@ const BASE_URL = 'https://wudassie-database.onrender.com/api';
 
 const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 10000,
+  // Render cold starts can exceed 10s; use a safer default timeout.
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -27,21 +28,25 @@ api.interceptors.request.use(
 // Add response interceptor
 api.interceptors.response.use(
   (response) => {
-    console.log('Response:', response.data);
+    if (__DEV__) {
+      console.log('Response:', response.data);
+    }
     return response;
   },
   (error) => {
-    if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
-      console.error('Response Error:', error.response.data);
-      console.error('Response Status:', error.response.status);
-    } else if (error.request) {
-      // The request was made but no response was received
-      console.error('Request Error:', error.request);
-    } else {
-      // Something happened in setting up the request that triggered an Error
-      console.error('Error:', error.message);
+    if (__DEV__) {
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.error('Response Error:', error.response.data);
+        console.error('Response Status:', error.response.status);
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.error('Request Error:', error.request);
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        console.error('Error:', error.message);
+      }
     }
     return Promise.reject(error);
   }

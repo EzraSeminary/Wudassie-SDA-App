@@ -1,9 +1,13 @@
 package com.wudassieapp
 
+import android.os.Bundle
+import androidx.core.content.ContextCompat
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
+
+import android.view.WindowManager
 
 class MainActivity : ReactActivity() {
 
@@ -19,4 +23,23 @@ class MainActivity : ReactActivity() {
    */
   override fun createReactActivityDelegate(): ReactActivityDelegate =
       DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
+
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+
+    // Apply status bar and navigation bar colors from resources so Android system bars
+    // match the app theme colors defined in res/values/colors.xml (and night variants).
+    try {
+      val window = window
+      val statusColor = ContextCompat.getColor(this, R.color.status_bar)
+      val navColor = ContextCompat.getColor(this, R.color.navigation_bar)
+      window.statusBarColor = statusColor
+      window.navigationBarColor = navColor
+      // Make sure content doesn't overlap system bars
+      window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
+      window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION)
+    } catch (e: Exception) {
+      // ignore if resources not available on older devices
+    }
+  }
 }
