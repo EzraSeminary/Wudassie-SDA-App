@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableWithoutFeedback, ScrollView, TouchableOpacity, Share } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -16,9 +16,9 @@ import FullScreenVerse from './FullScreenVerse';
 import MoreMenu from './MoreMenu';
 import SheetMusicViewer from './SheetMusicViewer';
 import AudioPlayer from './AudioPlayer';
+import SelectableLyrics from './SelectableLyrics';
 import { hymnalService, SDAHymn } from '../services/hymnalService';
 import tw from '../../tailwind';
-import hymnalData from './SDA_Hymnal.json';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import { useFloatingButtonLayout, getDefaultFontStyle } from '../utils/platformUtils';
@@ -44,6 +44,7 @@ const SongDetail = () => {
   const [isSheetMusicVisible, setIsSheetMusicVisible] = useState(false);
   const [isAudioVisible, setIsAudioVisible] = useState(false);
   const [fullSongData, setFullSongData] = useState<SDAHymn | null>(null);
+  const [allSongs, setAllSongs] = useState<SDAHymn[]>([]);
 
   // Generate consistent ID for hymnal songs
   const hymnalSongId = `hymnal-${songNumber}`;
@@ -68,7 +69,25 @@ const SongDetail = () => {
     fetchFullSongData();
   }, [song.title]);
 
-  const lyricLines = useMemo(() => song.lyrics.split('\\n'), [song.lyrics]);
+  useEffect(() => {
+    const loadSongs = async () => {
+      const immediateSongs = await hymnalService.getImmediateSDAHymns();
+      setAllSongs(immediateSongs);
+
+      try {
+        const refreshedSongs = await hymnalService.getSDAHymnsFromApi();
+        if (refreshedSongs.length > 0) {
+          setAllSongs(refreshedSongs);
+        }
+      } catch (error) {
+        if (__DEV__) {
+          console.error('Failed to refresh SDA song list in background', error);
+        }
+      }
+    };
+
+    loadSongs();
+  }, []);
 
   const handleOpenPopup = () => setIsFontSizePopupVisible(true);
   const handleClosePopup = () => setIsFontSizePopupVisible(false);
@@ -91,7 +110,8 @@ const SongDetail = () => {
   // Clean lyrics by removing tags and formatting
   const cleanLyrics = (lyrics: string): string => {
     return lyrics
-      .split('\\n')
+      .replace(/\\n/g, '\n')
+      .split('\n')
       .map(line => line.trim())
       .filter(line => line.length > 0)
       .join('\n');
@@ -113,7 +133,7 @@ const SongDetail = () => {
   };
 
   // Get total songs count
-  const totalSongs = hymnalData.resources.array[0].item.length;
+  const totalSongs = allSongs.length;
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -121,15 +141,15 @@ const SongDetail = () => {
 
   const handleGoToSong = (songNum: number) => {
     setIsNumpadVisible(false);
-    const songIndex = songNum - 1;
-    const newTitle = hymnalData.resources.array[0].item[songIndex];
-    const newLyrics = hymnalData.resources.array[2].item[songIndex];
-    const englishTitle = hymnalData.resources.array[3].item[songIndex];
+    const nextSong = allSongs[songNum - 1];
+    if (!nextSong) {
+      return;
+    }
 
     const newSong = {
-      title: newTitle,
-      englishTitle: englishTitle || '',
-      lyrics: newLyrics,
+      title: nextSong.newHymnalTitle || nextSong.title || nextSong.oldHymnalTitle || `Song ${songNum}`,
+      englishTitle: nextSong.englishTitleOld || '',
+      lyrics: nextSong.newHymnalLyrics || nextSong.lyrics || nextSong.oldHymnalLyrics || '',
     };
 
     navigation.navigate('SongDetail', { song: newSong, songNumber: songNum });
@@ -174,16 +194,34 @@ const SongDetail = () => {
     title: [
       tw`font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
       getDefaultFontStyle('bold'),
-      { fontSize: fontSize + 6, lineHeight: 32 },
+      {
+        fontSize: fontSize + 6,
+        lineHeight: Math.round((fontSize + 6) * 1.45),
+        paddingTop: 4,
+        paddingBottom: 8,
+        includeFontPadding: true,
+      },
     ],
     subtitle: [
       tw`text-sm font-nokia-bold ${isDarkMode ? 'text-primary-6' : 'text-secondary-6'}`,
       getDefaultFontStyle('bold'),
+      {
+        lineHeight: 22,
+        paddingTop: 2,
+        paddingBottom: 4,
+        includeFontPadding: true,
+      },
     ],
     lyrics: [
       tw`font-nokia-bold mb-2 ${isDarkMode ? 'text-primary-6' : 'text-secondary-6'}`,
       getDefaultFontStyle('bold'),
-      { fontSize, lineHeight: 28 },
+      {
+        fontSize,
+        lineHeight: Math.round(fontSize * 1.7),
+        paddingTop: 4,
+        paddingBottom: 10,
+        includeFontPadding: true,
+      },
     ],
     header: tw`flex-row justify-between items-center px-4 py-3 font-nokia-bold`,
     trackBox: tw`w-14 h-14 rounded-xl bg-accent-5 items-center justify-center`,
@@ -269,11 +307,11 @@ const SongDetail = () => {
                 paddingBottom: listBottomPadding,
               }}
           >
-            {lyricLines.map((line, index) => (
-              <Text key={index} style={dynamicStyles.lyrics}>
-                {line}
-              </Text>
-            ))}
+            <SelectableLyrics
+              text={song.lyrics}
+              style={dynamicStyles.lyrics}
+              selectionColor={accentColor}
+            />
           </ScrollView>
         </SafeAreaView>
 
@@ -303,7 +341,7 @@ const SongDetail = () => {
           onClose={() => setIsFullScreen(false)}
         />
 
-        <FontSizePopup visible={isFontSizePopupVisible} onClose={handleClosePopup} />
+        <FontSizePopup visible={isFontSizePopupVisible} onClose={handleClosePopup} previewText={song.title} />
         <NumpadModal
           visible={isNumpadVisible}
           onClose={handleCloseNumpad}

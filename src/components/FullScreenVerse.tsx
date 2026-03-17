@@ -7,17 +7,19 @@ import {
   BackHandler,
   StatusBar,
   Platform,
-  TouchableOpacity
+  TouchableOpacity,
+  ScrollView,
 } from 'react-native';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowsPointingInIcon, ChevronLeftIcon, ChevronRightIcon, AdjustmentsHorizontalIcon } from 'react-native-heroicons/outline';
-import { RootState, setFontSize } from '../store';
+import { RootState } from '../store';
 import tw from '../../tailwind';
 import Orientation from 'react-native-orientation-locker';
 import { useNavigation } from '@react-navigation/native';
-import Slider from '@react-native-community/slider';
 import KeepAwake from 'react-native-keep-awake';
+import FontSizePopup from './CustomBottomSheet';
+import SelectableLyrics from './SelectableLyrics';
 
 interface FullScreenVerseProps {
   song: {
@@ -39,7 +41,6 @@ interface LyricSection {
 const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onClose }) => {
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
   const fontSize = useSelector((state: RootState) => state.fontSize.fontSize);
-  const dispatch = useDispatch();
   const navigation = useNavigation();
   const [currentSection, setCurrentSection] = useState(0);
   const [lyricSections, setLyricSections] = useState<LyricSection[]>([]);
@@ -222,7 +223,7 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
           </View>
 
           {/* Main Content with Navigation Buttons */}
-          <View style={tw`flex-1 flex-row items-center mb-16`}>
+          <View style={tw`flex-1 flex-row items-stretch pb-16`}>
             {/* Left Navigation Button */}
             <TouchableOpacity 
               onPress={goToPrevious}
@@ -240,24 +241,32 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
             </TouchableOpacity>
 
             {/* Content */}
-            <View style={tw`flex-1 px-16 py-8 justify-center`}>
-              <Text 
+            <ScrollView
+              style={tw`flex-1 mx-16`}
+              contentContainerStyle={{
+                flexGrow: 1,
+                justifyContent: 'center',
+                paddingTop: 24,
+                paddingBottom: 32,
+              }}
+              showsVerticalScrollIndicator={false}
+              bounces
+            >
+              <SelectableLyrics
+                text={currentLyricSection.content}
+                selectionColor="#EA9215"
                 style={[
                   tw`text-center font-nokia-bold leading-relaxed ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
-                  { 
+                  {
                     fontSize: fontSize + (isLandscape ? 8 : 4),
-                    lineHeight: (fontSize + (isLandscape ? 8 : 4)) * 1.4
+                    lineHeight: (fontSize + (isLandscape ? 8 : 4)) * 1.55,
+                    paddingTop: 18,
+                    paddingBottom: 18,
+                    includeFontPadding: true,
                   }
                 ]}
-              >
-                {currentLyricSection.content.split('\n').map((line, index) => (
-                  <React.Fragment key={index}>
-                    {line}
-                    {index < currentLyricSection.content.split('\n').length - 1 && '\n'}
-                  </React.Fragment>
-                ))}
-              </Text>
-            </View>
+              />
+            </ScrollView>
 
             {/* Right Navigation Button */}
             <TouchableOpacity 
@@ -292,38 +301,7 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
         </View>
       </SafeAreaView>
 
-      {/* Font Size Popup Overlay */}
-      {isFontSizePopupVisible && (
-        <View style={tw`absolute inset-0 z-50 justify-center items-center bg-black bg-opacity-50`}>
-          <View style={tw`w-96 p-8 rounded-xl items-center ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-1'}`}>
-            <Text style={tw`text-2xl font-nokia-bold mb-8 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
-              Adjust Font Size
-            </Text>
-            <Slider
-              style={tw`w-80 h-12 mb-8`}
-              minimumValue={12}
-              maximumValue={40}
-              value={fontSize}
-              onValueChange={(value) => dispatch(setFontSize(value))}
-              minimumTrackTintColor="#EA9215"
-              maximumTrackTintColor={isDarkMode ? '#3A4750' : '#EEEEEE'}
-            />
-            <View style={tw`flex-row items-center justify-between w-80 mb-8`}>
-              <Text style={tw`text-base font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>Small</Text>
-              <Text style={tw`text-base font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>Large</Text>
-            </View>
-            <Text style={[tw`text-center font-nokia-bold mb-8 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`, { fontSize }]}>
-              የሱስ ክርስቶስ የኔ ወዳጅ
-            </Text>
-            <TouchableOpacity 
-              onPress={handleCloseFontSizePopup}
-              style={tw`bg-accent-6 px-8 py-4 rounded-lg`}
-            >
-              <Text style={tw`text-white font-nokia-bold text-lg`}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
+      <FontSizePopup visible={isFontSizePopupVisible} onClose={handleCloseFontSizePopup} previewText={song.title} />
     </View>
   );
 };

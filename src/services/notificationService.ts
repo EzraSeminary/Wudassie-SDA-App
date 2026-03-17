@@ -41,6 +41,7 @@ type SongNotificationPayload = {
   type: 'sda' | 'hagerigna';
   title: string;
   number: number;
+  collection: string;
 };
 
 const mapLocalSdaSongs = (): SDAHymn[] => {
@@ -78,8 +79,8 @@ const mapLocalHagerignaSongs = (): HagerignaHymn[] => {
 
 const pickRandomSong = async (): Promise<SongNotificationPayload> => {
   const [cachedSda, cachedHagerigna] = await Promise.all([
-    hymnalService.getLocalSDAHymns(),
-    hymnalService.getLocalHagerignaHymns(),
+    hymnalService.getImmediateSDAHymns(),
+    hymnalService.getImmediateHagerignaHymns(),
   ]);
 
   const sdaSongs = (cachedSda && cachedSda.length > 0) ? cachedSda : mapLocalSdaSongs();
@@ -90,16 +91,16 @@ const pickRandomSong = async (): Promise<SongNotificationPayload> => {
   sdaSongs.forEach((song, index) => {
     const number = song.number ?? index + 1;
     const title = song.newHymnalTitle || song.title || song.oldHymnalTitle || `Song ${number}`;
-    combined.push({ type: 'sda', title, number });
+    combined.push({ type: 'sda', title, number, collection: 'Hymn' });
   });
 
   hagerignaSongs.forEach((song, index) => {
     const number = index + 1;
-    combined.push({ type: 'hagerigna', title: song.title, number });
+    combined.push({ type: 'hagerigna', title: song.title, number, collection: 'Hagerigna' });
   });
 
   if (combined.length === 0) {
-    return { type: 'sda', title: 'Hymn', number: 1 };
+    return { type: 'sda', title: 'Hymn', number: 1, collection: 'Hymn' };
   }
 
   const randomIndex = Math.floor(Math.random() * combined.length);
@@ -139,8 +140,8 @@ export const notificationService = {
     await notifee.createTriggerNotification(
       {
         id: DAILY_REMINDER_ID,
-        title: `Song of the Day: ${song.title}`,
-        body: 'Tap to open the song.',
+        title: `${song.collection} of the Day: ${song.title}`,
+        body: `Tap to open this ${song.collection.toLowerCase()}.`,
         data: song,
         android: {
           channelId: 'daily-reminders',
@@ -168,7 +169,7 @@ export const notificationService = {
     if (!type || Number.isNaN(number)) return;
 
     if (type === 'sda') {
-      const cached = await hymnalService.getLocalSDAHymns();
+      const cached = await hymnalService.getImmediateSDAHymns();
       const local = cached && cached.length > 0 ? cached : mapLocalSdaSongs();
       const song = local[number - 1];
       if (!song) return;
@@ -184,7 +185,7 @@ export const notificationService = {
       return;
     }
 
-    const cachedHagerigna = await hymnalService.getLocalHagerignaHymns();
+    const cachedHagerigna = await hymnalService.getImmediateHagerignaHymns();
     const localHagerigna = cachedHagerigna && cachedHagerigna.length > 0 ? cachedHagerigna : mapLocalHagerignaSongs();
     const song = localHagerigna[number - 1];
     if (!song) return;

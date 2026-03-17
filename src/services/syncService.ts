@@ -1,12 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
-import api from './api';
+import { hymnalService } from './hymnalService';
 
 export const LAST_SYNC_KEY = 'last_sync_timestamp';
 
 export const syncService = {
   async checkForUpdates() {
     try {
+      await hymnalService.seedBundledDataIfNeeded();
+
       const netInfo = await NetInfo.fetch();
       if (!netInfo.isConnected) {
         if (__DEV__) {
@@ -26,49 +28,12 @@ export const syncService = {
         return false;
       }
 
-      // Fetch all pages of data
-      const fetchAllPages = async (endpoint: string) => {
-        const firstResponse = await api.get(`/${endpoint}?page=1&limit=100`);
-        const firstData = firstResponse.data;
-
-        // Handle non-paginated responses (array of items)
-        if (Array.isArray(firstData)) {
-          return firstData;
-        }
-
-        // Handle paginated responses { songs, totalPages }
-        const songs = Array.isArray(firstData?.songs) ? firstData.songs : [];
-        const totalPages = typeof firstData?.totalPages === 'number' ? firstData.totalPages : 1;
-
-        if (totalPages <= 1) {
-          return songs;
-        }
-
-        let allData = [...songs];
-        let currentPage = 2;
-
-        while (currentPage <= totalPages) {
-          const response = await api.get(`/${endpoint}?page=${currentPage}&limit=100`);
-          const pageSongs = Array.isArray(response.data?.songs) ? response.data.songs : [];
-          allData = [...allData, ...pageSongs];
-          currentPage++;
-        }
-
-        return allData;
-      };
-
       // Fetch latest data from backend API
-      const [hymnalData, hagerignaData] = await Promise.all([
-        fetchAllPages('sda'),
-        fetchAllPages('hagerigna')
-      ]);
-
-      // Save to local storage
       await Promise.all([
-        AsyncStorage.setItem('hymnal', JSON.stringify(hymnalData)),
-        AsyncStorage.setItem('hagerigna', JSON.stringify(hagerignaData)),
-        AsyncStorage.setItem(LAST_SYNC_KEY, currentTime.toString())
+        hymnalService.getSDAHymnsFromApi(),
+        hymnalService.getHagerignaHymnsFromApi()
       ]);
+      await AsyncStorage.setItem(LAST_SYNC_KEY, currentTime.toString());
 
       if (__DEV__) {
         console.log('Successfully synced data from backend API');
@@ -84,8 +49,9 @@ export const syncService = {
 
   async getLocalData(type: 'hymnal' | 'hagerigna') {
     try {
-      const data = await AsyncStorage.getItem(type);
-      return data ? JSON.parse(data) : null;
+      return type === 'hymnal'
+        ? await hymnalService.getImmediateSDAHymns()
+        : await hymnalService.getImmediateHagerignaHymns();
     } catch (error) {
       if (__DEV__) {
         console.error(`Error getting local ${type} data:`, error);

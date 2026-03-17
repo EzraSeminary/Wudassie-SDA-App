@@ -2,12 +2,10 @@ import React, {useEffect, useMemo, useState} from 'react';
 import {FlatList, Text, View, TextInput, TouchableWithoutFeedback, TouchableOpacity, Platform} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import NetInfo from '@react-native-community/netinfo';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {useSelector, useDispatch} from 'react-redux';
 import {RootState, AppDispatch} from '../store';
 import {RootStackParamList} from '../../App';
-import hymnalData from './SDA_Hymnal.json';
 import { BookOpenIcon, MagnifyingGlassIcon as OutlineSearchIcon, XMarkIcon as SolidXMarkIcon } from 'react-native-heroicons/outline';
 import { HeartIcon as SolidHeartIcon, HashtagIcon as SolidHashtagIcon } from 'react-native-heroicons/solid';
 import { HeartIcon as OutlineHeartIcon } from 'react-native-heroicons/outline';
@@ -49,57 +47,13 @@ const SongList = () => {
   }, [dispatch, favoritesLoaded]);
 
   useEffect(() => {
-    const parseLocalJson = (): Song[] => {
-      try {
-        const newTitles = hymnalData.resources.array[0].item;
-        const englishTitles = hymnalData.resources.array[3].item;
-        const newSongs = hymnalData.resources.array[2].item;
-
-        return newTitles.map((title: string, index: number) => ({
-          id: `hymnal-${index + 1}`,
-          title,
-          englishTitle: englishTitles[index] || '',
-          lyrics: newSongs[index],
-        }));
-      } catch (err) {
-        if (__DEV__) {
-          console.error('Error reading JSON file:', err);
-        }
-        return [];
-      }
-    };
-
     const mapApiSongs = (items: SDAHymn[]): Song[] => {
-      const getSdaIdOrder = (id?: string): number => {
-        const match = String(id || '').match(/^sda-(\d+)$/);
-        return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
-      };
-
-      // Canonical order comes from numeric part of id: sda-0, sda-1, ...
-      // This makes Mongo id sequencing the source of truth for listing.
-      const sortedItems = items
-        .map((item, originalIndex) => ({
-          item,
-          originalIndex,
-          idOrder: getSdaIdOrder(item.id),
-        }))
-        .sort((a, b) => {
-          if (a.idOrder === b.idOrder) {
-            return a.originalIndex - b.originalIndex;
-          }
-          return a.idOrder - b.idOrder;
-        })
-        .map(({ item }) => item);
-
-      return sortedItems.map((item, index) => {
-        const idOrder = getSdaIdOrder(item.id);
-        const resolvedNumber = Number.isFinite(idOrder) && idOrder !== Number.MAX_SAFE_INTEGER
-          ? idOrder + 1
-          : (item.number ?? index + 1);
+      return items.map((item, index) => {
+        const resolvedNumber = item.number ?? index + 1;
         const title = item.newHymnalTitle || item.title || item.oldHymnalTitle || `Song ${resolvedNumber}`;
         const lyrics = item.newHymnalLyrics || item.lyrics || item.oldHymnalLyrics || '';
         return {
-          id: item.id ? `${item.id}` : `hymnal-${resolvedNumber}`,
+          id: item.id || `hymnal-${resolvedNumber}`,
           title,
           englishTitle: item.englishTitleOld || '',
           lyrics,
@@ -108,30 +62,19 @@ const SongList = () => {
     };
 
     const loadSongs = async () => {
-      const netState = await NetInfo.fetch();
-      const isOnline = Boolean(netState.isConnected && netState.isInternetReachable !== false);
+      const immediateSongs = await hymnalService.getImmediateSDAHymns();
+      setSongs(mapApiSongs(immediateSongs));
 
-      if (isOnline) {
-        try {
-          const apiData = await hymnalService.getSDAHymnsFromApi();
-          if (apiData && apiData.length > 0) {
-            setSongs(mapApiSongs(apiData));
-            return;
-          }
-        } catch (e) {
-          if (__DEV__) {
-            console.error('Failed to fetch SDA hymns, using cache/local', e);
-          }
+      try {
+        const apiData = await hymnalService.getSDAHymnsFromApi();
+        if (apiData && apiData.length > 0) {
+          setSongs(mapApiSongs(apiData));
+        }
+      } catch (e) {
+        if (__DEV__) {
+          console.error('Failed to refresh SDA hymns in background', e);
         }
       }
-
-      const cached = await hymnalService.getLocalSDAHymns();
-      if (cached && cached.length > 0) {
-        setSongs(mapApiSongs(cached));
-        return;
-      }
-
-      setSongs(parseLocalJson());
     };
 
     loadSongs();

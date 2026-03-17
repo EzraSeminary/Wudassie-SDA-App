@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import NetInfo from '@react-native-community/netinfo';
 import { useFloatingButtonLayout } from '../../utils/platformUtils';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
@@ -27,7 +26,6 @@ import tw from '../../../tailwind';
 import { MusicalNoteIcon, MagnifyingGlassIcon as OutlineSearchIcon } from 'react-native-heroicons/outline';
 import { HeartIcon as SolidHeartIcon, XMarkIcon as SolidXMarkIcon, HashtagIcon as SolidHashtagIcon } from 'react-native-heroicons/solid';
 import { HeartIcon as OutlineHeartIcon, ChevronLeftIcon } from 'react-native-heroicons/outline';
-import localHagerignaHymns from './HagerignaData.json';
 
 
 type SongListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'HagerignaList'>;
@@ -68,56 +66,32 @@ const HagerignaList = () => {
     }
   }, [dispatch, favoritesLoaded]);
 
-  const parseLocalJson = (): HagerignaHymn[] => {
-    try {
-      const newTitles = localHagerignaHymns.resources.array[2].item;
-      const newArtist = localHagerignaHymns.resources.array[0].item;
-      const newSongs = localHagerignaHymns.resources.array[1].item;
-      return newTitles.map((title: string, index: number) => ({
-        id: `hagerigna-${index + 1}`,
-        title,
-        song: newSongs[index],
-        artist: newArtist[index],
-      }));
-    } catch (err) {
-      if (__DEV__) {
-        console.error('Error reading JSON file:', err);
-      }
-      return [];
-    }
-  };
-
   useEffect(() => {
     const loadSongs = async () => {
       setLoading(true);
       setError(null);
 
-      const netState = await NetInfo.fetch();
-      const isOnline = Boolean(netState.isConnected && netState.isInternetReachable !== false);
-
-      if (isOnline) {
-        try {
-          const apiSongs = await hymnalService.getHagerignaHymnsFromApi();
-          if (apiSongs && apiSongs.length > 0) {
-            setSongs(apiSongs);
-            setLoading(false);
-            return;
-          }
-        } catch (e) {
-          if (__DEV__) {
-            console.error('Failed to fetch Hagerigna hymns, using cache/local', e);
-          }
-          setError('Failed to fetch updates. Showing cached or local version.');
+      try {
+        const immediateSongs = await hymnalService.getImmediateHagerignaHymns();
+        setSongs(immediateSongs);
+      } catch (e) {
+        if (__DEV__) {
+          console.error('Failed to load local Hagerigna hymns', e);
         }
-      }
-
-      const cachedSongs = await hymnalService.getLocalHagerignaHymns();
-      if (cachedSongs && cachedSongs.length > 0) {
-        setSongs(cachedSongs);
-      } else {
-        setSongs(parseLocalJson());
+        setError('Failed to load songs.');
       }
       setLoading(false);
+
+      try {
+        const apiSongs = await hymnalService.getHagerignaHymnsFromApi();
+        if (apiSongs && apiSongs.length > 0) {
+          setSongs(apiSongs);
+        }
+      } catch (e) {
+        if (__DEV__) {
+          console.error('Failed to refresh Hagerigna hymns in background', e);
+        }
+      }
     };
 
     loadSongs();

@@ -13,7 +13,6 @@ import { hymnalService, HagerignaHymn } from '../../services/hymnalService';
 import { RootState, AppDispatch } from '../../store';
 import { loadFavorites, toggleFavorite } from '../../store/favoritesSlice';
 import { RootStackParamList } from '../../../App';
-import hymnalData from '../SDA_Hymnal.json';
 
 type FavoritesListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'FavoritesList'>;
 
@@ -21,6 +20,7 @@ interface HymnalSong {
   id: string;
   title: string;
   lyrics: string;
+  englishTitle?: string;
   type: 'hymnal';
 }
 
@@ -53,44 +53,66 @@ const FavoritesList = () => {
   }, [dispatch, favoritesLoaded]);
 
   useEffect(() => {
-    const fetchHagerignaHymns = async () => {
+    const mapHymnalSongs = async () => {
       try {
-        const cachedHymns = await hymnalService.getLocalHagerignaHymns();
-        if (cachedHymns) {
-          setAllHagerignaHymns(cachedHymns);
-        }
-
-        const apiHymns = await hymnalService.getHagerignaHymns();
-        setAllHagerignaHymns(apiHymns);
+        const immediateSda = await hymnalService.getImmediateSDAHymns();
+        const songs: HymnalSong[] = immediateSda.map((song, index) => {
+          const number = song.number ?? index + 1;
+          return {
+            id: song.id || `hymnal-${number}`,
+            title: song.newHymnalTitle || song.title || song.oldHymnalTitle || `Song ${number}`,
+            lyrics: song.newHymnalLyrics || song.lyrics || song.oldHymnalLyrics || '',
+            englishTitle: song.englishTitleOld || '',
+            type: 'hymnal',
+          };
+        });
+        setAllHymnalSongs(songs);
       } catch (e) {
-        setError('Failed to load Hagerigna hymns.');
+        setError('Failed to load hymnal songs.');
         console.error(e);
       }
     };
 
-    const fetchHymnalSongs = () => {
+    const loadFavoritesSources = async () => {
       try {
-        const titles = hymnalData.resources.array[0].item;
-        const lyrics = hymnalData.resources.array[2].item;
-        
-        const hymnalSongs: HymnalSong[] = titles.map((title, index) => ({
-          id: `hymnal-${index + 1}`,
-          title,
-          lyrics: lyrics[index],
-          type: 'hymnal' as const,
-        }));
-        
-        setAllHymnalSongs(hymnalSongs);
+        const [immediateHagerigna] = await Promise.all([
+          hymnalService.getImmediateHagerignaHymns(),
+          mapHymnalSongs(),
+        ]);
+
+        setAllHagerignaHymns(immediateHagerigna);
       } catch (e) {
-        setError('Failed to load hymnal songs.');
+        setError('Failed to load songs.');
         console.error(e);
       } finally {
         setHymnsLoading(false);
       }
+
+      try {
+        const [apiHagerigna, apiSda] = await Promise.all([
+          hymnalService.getHagerignaHymnsFromApi(),
+          hymnalService.getSDAHymnsFromApi(),
+        ]);
+
+        setAllHagerignaHymns(apiHagerigna);
+        setAllHymnalSongs(apiSda.map((song, index) => {
+          const number = song.number ?? index + 1;
+          return {
+            id: song.id || `hymnal-${number}`,
+            title: song.newHymnalTitle || song.title || song.oldHymnalTitle || `Song ${number}`,
+            lyrics: song.newHymnalLyrics || song.lyrics || song.oldHymnalLyrics || '',
+            englishTitle: song.englishTitleOld || '',
+            type: 'hymnal',
+          };
+        }));
+      } catch (e) {
+        if (__DEV__) {
+          console.error('Failed to refresh favorites sources in background', e);
+        }
+      }
     };
 
-    fetchHagerignaHymns();
-    fetchHymnalSongs();
+    loadFavoritesSources();
   }, []);
 
   const favoriteHagerignaHymns = useMemo(() => {
@@ -116,6 +138,7 @@ const FavoritesList = () => {
       const hymnalSong = {
         title: song.title,
         lyrics: song.lyrics,
+        englishTitle: song.englishTitle,
       };
       navigation.navigate('SongDetail', { song: hymnalSong, songNumber: songIndex + 1 });
     }
@@ -268,4 +291,4 @@ const FavoritesList = () => {
   );
 };
 
-export default FavoritesList; 
+export default FavoritesList;

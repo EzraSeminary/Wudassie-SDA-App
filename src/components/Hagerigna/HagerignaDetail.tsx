@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableWithoutFeedback, TouchableOpacity, Share } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
@@ -13,13 +13,13 @@ import FullScreenVerse from './../FullScreenVerse';
 import MoreMenu from './../MoreMenu';
 import SheetMusicViewer from './../SheetMusicViewer';
 import AudioPlayer from './../AudioPlayer';
+import SelectableLyrics from './../SelectableLyrics';
 import { hymnalService, HagerignaHymn } from '../../services/hymnalService';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import tw from '../../../tailwind';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import hagerignaData from './HagerignaData.json';
 import { loadFavorites, toggleFavorite } from '../../store/favoritesSlice';
 import Orientation from 'react-native-orientation-locker';
 import { useFloatingButtonLayout, getDefaultFontStyle } from '../../utils/platformUtils';
@@ -47,6 +47,7 @@ const HagerignaDetail = () => {
   const [isAudioVisible, setIsAudioVisible] = useState(false);
   const [song, setSong] = useState<HagerignaHymn>(initialSong);
   const [fullSongData, setFullSongData] = useState<HagerignaHymn | null>(null);
+  const [allSongs, setAllSongs] = useState<HagerignaHymn[]>([]);
 
   const handleOpenPopup = () => setPopupVisible(true);
   const handleClosePopup = () => setPopupVisible(false);
@@ -68,11 +69,29 @@ const HagerignaDetail = () => {
     }
   }, [dispatch, favoritesLoaded]);
 
-  const lyricLines = useMemo(() => song.song.split('\\n'), [song.song]);
-
   useEffect(() => {
     setSong(initialSong);
   }, [initialSong]);
+
+  useEffect(() => {
+    const loadSongs = async () => {
+      const immediateSongs = await hymnalService.getImmediateHagerignaHymns();
+      setAllSongs(immediateSongs);
+
+      try {
+        const refreshedSongs = await hymnalService.getHagerignaHymnsFromApi();
+        if (refreshedSongs.length > 0) {
+          setAllSongs(refreshedSongs);
+        }
+      } catch (error) {
+        if (__DEV__) {
+          console.error('Failed to refresh Hagerigna song list in background', error);
+        }
+      }
+    };
+
+    loadSongs();
+  }, []);
 
   // Fetch full song data from API to get sheet_music and audio
   useEffect(() => {
@@ -113,7 +132,8 @@ const HagerignaDetail = () => {
   // Clean lyrics by removing tags and formatting
   const cleanLyrics = (lyrics: string): string => {
     return lyrics
-      .split('\\n')
+      .replace(/\\n/g, '\n')
+      .split('\n')
       .map(line => line.trim())
       .filter(line => line.length > 0)
       .join('\n');
@@ -136,7 +156,7 @@ const HagerignaDetail = () => {
     }
   };
 
-  const totalSongs = hagerignaData.resources.array[2].item.length;
+  const totalSongs = allSongs.length;
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -147,15 +167,13 @@ const HagerignaDetail = () => {
     if (newSongIndex < 0 || newSongIndex >= totalSongs) return;
 
     setNumpadVisible(false);
-    const newTitle = hagerignaData.resources.array[2].item[newSongIndex];
-    const newArtist = hagerignaData.resources.array[0].item[newSongIndex];
-    const newLyrics = hagerignaData.resources.array[1].item[newSongIndex];
+    const nextSong = allSongs[newSongIndex];
+    if (!nextSong) {
+      return;
+    }
 
     const newSongData: HagerignaHymn = {
-      id: `hagerigna-${newSongIndex + 1}`,
-      title: newTitle,
-      song: newLyrics,
-      artist: newArtist,
+      ...nextSong,
     };
 
     navigation.setParams({
@@ -201,16 +219,34 @@ const HagerignaDetail = () => {
     title: [
       tw`font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
       getDefaultFontStyle('bold'),
-      { fontSize: fontSize + 6, lineHeight: 32 },
+      {
+        fontSize: fontSize + 6,
+        lineHeight: Math.round((fontSize + 6) * 1.45),
+        paddingTop: 4,
+        paddingBottom: 8,
+        includeFontPadding: true,
+      },
     ],
     artist: [
       tw`text-sm font-nokia-bold ${isDarkMode ? 'text-primary-6' : 'text-secondary-6'}`,
       getDefaultFontStyle('bold'),
+      {
+        lineHeight: 22,
+        paddingTop: 2,
+        paddingBottom: 4,
+        includeFontPadding: true,
+      },
     ],
     lyrics: [
       tw`font-nokia-bold mb-2 ${isDarkMode ? 'text-primary-6' : 'text-secondary-6'}`,
       getDefaultFontStyle('bold'),
-      { fontSize, lineHeight: 28 },
+      {
+        fontSize,
+        lineHeight: Math.round(fontSize * 1.7),
+        paddingTop: 4,
+        paddingBottom: 10,
+        includeFontPadding: true,
+      },
     ],
     header: tw`flex-row justify-between items-center px-4 py-3 font-nokia-bold`,
     trackBox: tw`w-14 h-14 rounded-xl bg-accent-5 items-center justify-center`,
@@ -302,11 +338,11 @@ const HagerignaDetail = () => {
             contentContainerStyle={{ paddingBottom: listBottomPadding }}
           >
             <View style={tw`p-5`}>
-              {lyricLines.map((line: string, index: number) => (
-                <Text key={index} style={dynamicStyles.lyrics}>
-                  {line}
-                </Text>
-              ))}
+              <SelectableLyrics
+                text={song.song}
+                style={dynamicStyles.lyrics}
+                selectionColor={accentColor}
+              />
             </View>
           </ScrollView>
         </SafeAreaView>
@@ -330,7 +366,7 @@ const HagerignaDetail = () => {
           <SolidHashtagIcon size={28} color="#FDFDFD" />
         </TouchableOpacity>
 
-        <FontSizePopup visible={isPopupVisible} onClose={handleClosePopup} />
+        <FontSizePopup visible={isPopupVisible} onClose={handleClosePopup} previewText={song.title} />
         <NumpadModal
           visible={isNumpadVisible}
           onClose={handleCloseNumpad}

@@ -4,7 +4,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Slider from '@react-native-community/slider';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState, setFontSize, setFontSizeWithPersistence, toggleDarkModeWithPersistence, AppDispatch } from '../../store';
+import { RootState, setFontSizeWithPersistence, toggleDarkModeWithPersistence, AppDispatch } from '../../store';
 import { Cog6ToothIcon, MusicalNoteIcon, BookOpenIcon, HeartIcon, ArrowPathIcon } from 'react-native-heroicons/outline';
 import { getCardStyle } from '../../utils/platformUtils';
 import { hymnalService } from '../../services/hymnalService';
@@ -23,7 +23,12 @@ const Settings = () => {
   const [lastSyncTimestamp, setLastSyncTimestamp] = useState<number | null>(null);
   const [notificationTime, setNotificationTime] = useState<{ hour: number; minute: number; formatted: string } | null>(null);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [previewFontSize, setPreviewFontSize] = useState(fontSize);
   const contentBottomPadding = useBottomContentPadding(24);
+
+  useEffect(() => {
+    setPreviewFontSize(fontSize);
+  }, [fontSize]);
 
   useEffect(() => {
     const loadMeta = async () => {
@@ -108,15 +113,27 @@ const Settings = () => {
                   style={tw`flex-1 h-10 mx-4`}
                   minimumValue={12}
                   maximumValue={32}
-                  value={fontSize}
-                  onValueChange={value => dispatch(setFontSize(value))}
-                  onSlidingComplete={value => dispatch(setFontSizeWithPersistence(value))}
+                  step={1}
+                  value={previewFontSize}
+                  onValueChange={value => setPreviewFontSize(Math.round(value))}
+                  onSlidingComplete={value => dispatch(setFontSizeWithPersistence(Math.round(value)))}
                   minimumTrackTintColor="#EA9215"
                   maximumTrackTintColor={isDarkMode ? '#3A4750' : '#EEEEEE'}
                 />
                 <Text style={tw`text-base ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>Large</Text>
               </View>
-              <Text style={[tw`text-center font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`, { fontSize }]}>
+              <Text
+                style={[
+                  tw`text-center font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
+                  {
+                    fontSize: previewFontSize,
+                    lineHeight: Math.round(previewFontSize * 1.65),
+                    paddingTop: 6,
+                    paddingBottom: 10,
+                    includeFontPadding: true,
+                  },
+                ]}
+              >
                 የሱስ ክርስቶስ የኔ ወዳጅ
               </Text>
             </View>

@@ -15,6 +15,29 @@ const initialState: FavoritesState = {
   isLoading: false,
 };
 
+const normalizeFavoriteIds = (favoriteIds: string[], rawHagerignaCache: string | null): string[] => {
+  const parsedHagerigna = rawHagerignaCache ? JSON.parse(rawHagerignaCache) : [];
+  const hagerignaIdMap = Array.isArray(parsedHagerigna)
+    ? new Map(parsedHagerigna.map((song: any, index: number) => [song?.id, `hagerigna-${index + 1}`]))
+    : new Map<string, string>();
+
+  const normalized = favoriteIds.map((favoriteId) => {
+    const sdaMatch = favoriteId.match(/^sda-(\d+)$/);
+    if (sdaMatch) {
+      return `hymnal-${Number(sdaMatch[1]) + 1}`;
+    }
+
+    const mappedHagerignaId = hagerignaIdMap.get(favoriteId);
+    if (mappedHagerignaId) {
+      return mappedHagerignaId;
+    }
+
+    return favoriteId;
+  });
+
+  return Array.from(new Set(normalized));
+};
+
 const favoritesSlice = createSlice({
   name: 'favorites',
   initialState,
@@ -52,10 +75,15 @@ export const loadFavorites = (): AppThunk => async dispatch => {
         const storedFavorites = await AsyncStorage.getItem('favorites');
         if (storedFavorites) {
             const parsed = JSON.parse(storedFavorites);
+            const rawHagerignaCache = await AsyncStorage.getItem('hagerigna');
+            const normalizedFavorites = normalizeFavoriteIds(parsed, rawHagerignaCache);
             if (__DEV__) {
-              console.log('Loaded favorites from storage:', parsed);
+              console.log('Loaded favorites from storage:', normalizedFavorites);
             }
-            dispatch(setFavorites(parsed));
+            if (JSON.stringify(parsed) !== JSON.stringify(normalizedFavorites)) {
+              await AsyncStorage.setItem('favorites', JSON.stringify(normalizedFavorites));
+            }
+            dispatch(setFavorites(normalizedFavorites));
         } else {
             if (__DEV__) {
               console.log('No favorites found in storage');
@@ -134,4 +162,4 @@ export const toggleFavorite = (songId: string, songTitle?: string): AppThunk => 
     }
 };
 
-export default favoritesSlice.reducer; 
+export default favoritesSlice.reducer;
