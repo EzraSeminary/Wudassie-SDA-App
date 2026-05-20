@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useSelector } from 'react-redux';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowsPointingInIcon, ChevronLeftIcon, ChevronRightIcon, AdjustmentsHorizontalIcon } from 'react-native-heroicons/outline';
+import { ArrowsPointingInIcon, ChevronLeftIcon, ChevronRightIcon } from 'react-native-heroicons/outline';
 import { RootState } from '../store';
 import tw from '../../tailwind';
 import Orientation from 'react-native-orientation-locker';
@@ -205,10 +205,7 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
             {/* Font Size Button */}
             <TouchableWithoutFeedback onPress={handleOpenFontSizePopup}>
               <View style={tw`p-2 mr-2`}>
-                <AdjustmentsHorizontalIcon 
-                  size={24} 
-                  color={isDarkMode ? '#FDFDFD' : '#1A2024'} 
-                />
+                <Text style={[tw`font-nokia-bold text-lg`, { color: isDarkMode ? '#FDFDFD' : '#1A2024' }]}>Aa</Text>
               </View>
             </TouchableWithoutFeedback>
             

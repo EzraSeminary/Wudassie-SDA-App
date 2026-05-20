@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableWithoutFeedback, ScrollView, TouchableOpacity, Share } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableWithoutFeedback, TouchableOpacity, Share, Animated } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSelector, useDispatch } from 'react-redux';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootState, AppDispatch } from '../store';
 import { RootStackParamList } from '../../App';
-import { ArrowLeftIcon, ArrowsPointingOutIcon, EllipsisVerticalIcon, ArrowUpTrayIcon, AdjustmentsHorizontalIcon } from 'react-native-heroicons/outline';
+import { ArrowLeftIcon, ArrowsPointingOutIcon, EllipsisVerticalIcon, ArrowUpTrayIcon } from 'react-native-heroicons/outline';
 import { HeartIcon as SolidHeartIcon, HashtagIcon as SolidHashtagIcon } from 'react-native-heroicons/solid';
 import { HeartIcon as OutlineHeartIcon } from 'react-native-heroicons/outline';
 import { loadFavorites, toggleFavorite } from '../store/favoritesSlice';
@@ -22,9 +22,12 @@ import tw from '../../tailwind';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import { useFloatingButtonLayout, getDefaultFontStyle } from '../utils/platformUtils';
+import { buildSongShareMessage } from '../utils/shareUtils';
 
 type SongDetailRouteProp = RouteProp<RootStackParamList, 'SongDetail'>;
 type SongDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SongDetail'>;
+
+const SCROLL_THRESHOLD = 55;
 
 const SongDetail = () => {
   const { floatingButtonBottom, listBottomPadding } = useFloatingButtonLayout();
@@ -37,6 +40,8 @@ const SongDetail = () => {
   const { favoriteIds = [], isLoaded: favoritesLoaded = false } = useSelector((state: RootState) => state.favorites) || {};
   const dispatch: AppDispatch = useDispatch();
 
+  const scrollY = useRef(new Animated.Value(0)).current;
+
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isFontSizePopupVisible, setIsFontSizePopupVisible] = useState(false);
   const [isNumpadVisible, setIsNumpadVisible] = useState(false);
@@ -45,6 +50,48 @@ const SongDetail = () => {
   const [isAudioVisible, setIsAudioVisible] = useState(false);
   const [fullSongData, setFullSongData] = useState<SDAHymn | null>(null);
   const [allSongs, setAllSongs] = useState<SDAHymn[]>([]);
+
+  // Animated interpolations for collapsing header
+  const subtitleOpacity = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD * 0.6],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+  const subtitleMaxHeight = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD * 0.6],
+    outputRange: [36, 0],
+    extrapolate: 'clamp',
+  });
+  const trackBoxSize = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [56, 36],
+    extrapolate: 'clamp',
+  });
+  const trackBoxNumberSize = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [20, 13],
+    extrapolate: 'clamp',
+  });
+  const headerPaddingTop = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [8, 2],
+    extrapolate: 'clamp',
+  });
+  const headerPaddingBottom = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [16, 4],
+    extrapolate: 'clamp',
+  });
+  const animTitleFontSize = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [fontSize + 6, fontSize + 1],
+    extrapolate: 'clamp',
+  });
+  const animTitleLineHeight = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [Math.round((fontSize + 6) * 1.45), Math.round((fontSize + 1) * 1.3)],
+    extrapolate: 'clamp',
+  });
 
   // Generate consistent ID for hymnal songs
   const hymnalSongId = `hymnal-${songNumber}`;
@@ -56,7 +103,6 @@ const SongDetail = () => {
     }
   }, [dispatch, favoritesLoaded]);
 
-  // Fetch full song data from cache/API to get sheet_music and audio
   useEffect(() => {
     const fetchFullSongData = async () => {
       try {
@@ -107,44 +153,27 @@ const SongDetail = () => {
     dispatch(toggleFavorite(hymnalSongId, song.title));
   };
 
-  // Clean lyrics by removing tags and formatting
-  const cleanLyrics = (lyrics: string): string => {
-    return lyrics
-      .replace(/\\n/g, '\n')
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0)
-      .join('\n');
-  };
-
-  // Share song as plain text
   const handleShare = async () => {
     try {
-      const cleanText = cleanLyrics(song.lyrics);
-      const shareText = `${songNumber}. ${song.title}\n\n${cleanText}`;
-      
-      await Share.share({
-        message: shareText,
+      const shareText = buildSongShareMessage({
+        songNumber,
         title: song.title,
+        lyrics: song.lyrics,
       });
+      await Share.share({ message: shareText, title: song.title });
     } catch (error) {
       console.error('Error sharing song:', error);
     }
   };
 
-  // Get total songs count
   const totalSongs = allSongs.length;
 
-  const handleBackPress = () => {
-    navigation.goBack();
-  };
+  const handleBackPress = () => navigation.goBack();
 
   const handleGoToSong = (songNum: number) => {
     setIsNumpadVisible(false);
     const nextSong = allSongs[songNum - 1];
-    if (!nextSong) {
-      return;
-    }
+    if (!nextSong) return;
 
     const newSong = {
       title: nextSong.newHymnalTitle || nextSong.title || nextSong.oldHymnalTitle || `Song ${songNum}`,
@@ -167,9 +196,7 @@ const SongDetail = () => {
     handleGoToSong(newSongNum);
   };
 
-  const handleSwipeNavigation = (direction: 'next' | 'previous') => {
-    navigateToSong(direction);
-  };
+  const handleSwipeNavigation = (direction: 'next' | 'previous') => navigateToSong(direction);
 
   const panGesture = Gesture.Pan()
     .minDistance(50)
@@ -185,23 +212,11 @@ const SongDetail = () => {
     })
     .simultaneousWithExternalGesture();
 
-
-
   const accentColor = tw.color('accent-6') ?? '#EA9215';
   const mutedIconColor = isDarkMode ? '#9CA3AF' : '#6B7280';
+
   const dynamicStyles = {
-    container: tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`,
-    title: [
-      tw`font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
-      getDefaultFontStyle('bold'),
-      {
-        fontSize: fontSize + 6,
-        lineHeight: Math.round((fontSize + 6) * 1.45),
-        paddingTop: 4,
-        paddingBottom: 8,
-        includeFontPadding: true,
-      },
-    ],
+    header: tw`flex-row justify-between items-center px-4 py-3 font-nokia-bold`,
     subtitle: [
       tw`text-sm font-nokia-bold ${isDarkMode ? 'text-primary-6' : 'text-secondary-6'}`,
       getDefaultFontStyle('bold'),
@@ -223,16 +238,14 @@ const SongDetail = () => {
         includeFontPadding: true,
       },
     ],
-    header: tw`flex-row justify-between items-center px-4 py-3 font-nokia-bold`,
-    trackBox: tw`w-14 h-14 rounded-xl bg-accent-5 items-center justify-center`,
-    divider: tw`h-px mt-4 ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-6'}`,
+    divider: tw`h-px mt-3 ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-6'}`,
   };
 
   return (
     <GestureDetector gesture={panGesture}>
       <View style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}>
         <SafeAreaView style={tw`flex-1`} edges={['top']}>
-          {/* Top bar: back + action icons in one row */}
+          {/* Top bar */}
           <View style={[dynamicStyles.header, { paddingTop: Math.max(insets.top + 8, 20) }]}>
             <TouchableWithoutFeedback onPress={handleBackPress}>
               <View style={tw`p-2`}>
@@ -259,7 +272,7 @@ const SongDetail = () => {
                 </View>
               </TouchableWithoutFeedback>
               <TouchableOpacity onPress={handleOpenPopup} style={tw`p-2`}>
-                <AdjustmentsHorizontalIcon size={22} color={mutedIconColor} />
+                <Text style={[tw`font-nokia-bold text-base`, { color: mutedIconColor }]}>Aa</Text>
               </TouchableOpacity>
               {(hasSheetMusic || hasAudio) ? (
                 <TouchableWithoutFeedback onPress={handleOpenMoreMenu}>
@@ -271,56 +284,102 @@ const SongDetail = () => {
             </View>
           </View>
 
-          {/* Track info: number box + title & subtitle */}
-          <View style={tw`px-5 pt-2 pb-4`}>
+          {/* Animated track info: number box + title + subtitle */}
+          <Animated.View
+            style={[
+              tw`px-5`,
+              { paddingTop: headerPaddingTop, paddingBottom: headerPaddingBottom },
+            ]}
+          >
             <View style={tw`flex-row items-center`}>
-              <View style={dynamicStyles.trackBox}>
-                <Text style={[tw`text-white font-nokia-bold text-xl`, getDefaultFontStyle('bold')]}>
+              {/* Animated number box */}
+              <Animated.View
+                style={[
+                  tw`rounded-xl bg-accent-5 items-center justify-center`,
+                  { width: trackBoxSize, height: trackBoxSize },
+                ]}
+              >
+                <Animated.Text
+                  style={[
+                    tw`text-white font-nokia-bold`,
+                    getDefaultFontStyle('bold'),
+                    { fontSize: trackBoxNumberSize },
+                  ]}
+                >
                   {songNumber}
-                </Text>
-              </View>
+                </Animated.Text>
+              </Animated.View>
+
               <View style={tw`flex-1 ml-4 min-w-0`}>
-                <Text style={[dynamicStyles.title, tw`font-nokia-bold`]}>
+                {/* Animated title */}
+                <Animated.Text
+                  style={[
+                    tw`font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
+                    getDefaultFontStyle('bold'),
+                    {
+                      fontSize: animTitleFontSize,
+                      lineHeight: animTitleLineHeight,
+                      paddingTop: 4,
+                      paddingBottom: 4,
+                      includeFontPadding: true,
+                    },
+                  ]}
+                >
                   {song.title}
-                </Text>
+                </Animated.Text>
+
+                {/* Animated subtitle — fades out and collapses on scroll */}
                 {song.englishTitle ? (
-                  <View style={tw`flex-row items-center mt-1.5`}>
-                    <View style={tw`w-1 h-4 rounded-full bg-accent-6 mr-2`} />
-                    <Text style={dynamicStyles.subtitle} numberOfLines={1}>
-                      {song.englishTitle}
-                    </Text>
-                  </View>
+                  <Animated.View
+                    style={{
+                      opacity: subtitleOpacity,
+                      maxHeight: subtitleMaxHeight,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <View style={tw`flex-row items-center mt-1`}>
+                      <View style={tw`w-1 h-4 rounded-full bg-accent-6 mr-2`} />
+                      <Text style={dynamicStyles.subtitle} numberOfLines={1}>
+                        {song.englishTitle}
+                      </Text>
+                    </View>
+                  </Animated.View>
                 ) : null}
               </View>
             </View>
             <View style={dynamicStyles.divider} />
-          </View>
+          </Animated.View>
 
-          {/* Lyrics */}
-          <ScrollView
+          {/* Lyrics with scroll tracking */}
+          <Animated.ScrollView
             style={tw`flex-1`}
             showsVerticalScrollIndicator={false}
             scrollEnabled={true}
             bounces={true}
-              contentContainerStyle={{
-                padding: 20,
-                paddingBottom: listBottomPadding,
-              }}
+            contentContainerStyle={{
+              padding: 20,
+              paddingBottom: listBottomPadding,
+            }}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+              { useNativeDriver: false },
+            )}
+            scrollEventThrottle={16}
           >
             <SelectableLyrics
               text={song.lyrics}
               style={dynamicStyles.lyrics}
               selectionColor={accentColor}
             />
-          </ScrollView>
+          </Animated.ScrollView>
         </SafeAreaView>
 
         {/* Floating Circular Numpad Button */}
         <TouchableOpacity
           onPress={handleOpenNumpad}
-        style={[
-          tw`absolute right-5 w-16 h-16 bg-accent-6 rounded-full items-center justify-center`,
-          { bottom: floatingButtonBottom },
+          style={[
+            tw`absolute right-5 w-16 h-16 bg-accent-6 rounded-full items-center justify-center`,
+            { bottom: floatingButtonBottom },
             {
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 4 },
@@ -334,7 +393,6 @@ const SongDetail = () => {
           <SolidHashtagIcon size={28} color="#FDFDFD" />
         </TouchableOpacity>
 
-        {/* Full Screen Verse Component */}
         <FullScreenVerse
           song={song}
           isVisible={isFullScreen}

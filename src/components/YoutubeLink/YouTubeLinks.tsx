@@ -14,7 +14,10 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useSelector } from 'react-redux';
 import NetInfo from '@react-native-community/netinfo';
 import { RootState } from '../../store';
-import { MusicalNoteIcon, PlayIcon } from 'react-native-heroicons/outline';
+import {
+  MusicalNoteIcon,
+  PlayIcon,
+} from 'react-native-heroicons/outline';
 import { getCardStyle, useBottomContentPadding } from '../../utils/platformUtils';
 import tw from '../../../tailwind';
 import YoutubePlayer from 'react-native-youtube-iframe';
@@ -44,7 +47,9 @@ const MusicPlayer = () => {
   );
 
   useEffect(() => {
-    if (links.length === 0) return;
+    if (links.length === 0) {
+      return;
+    }
     if (!selectedId || !links.some((link) => link.id === selectedId)) {
       setSelectedId(links[0].id);
     }
@@ -106,7 +111,9 @@ const MusicPlayer = () => {
   useEffect(() => {
     let isActive = true;
     const run = async () => {
-      if (!isActive) return;
+      if (!isActive) {
+        return;
+      }
       await fetchLinks(false);
     };
 
@@ -171,13 +178,18 @@ const MusicPlayer = () => {
                 width={playerWidth}
                 play={false}
                 videoId={selectedLink.videoId}
+                forceAndroidAutoplay
+                webViewProps={{
+                  mediaPlaybackRequiresUserAction: false,
+                  allowsInlineMediaPlayback: true,
+                }}
                 initialPlayerParams={{
                   controls: true,
                   rel: false,
                   modestbranding: true,
                   iv_load_policy: 3,
                 }}
-                onError={(playerErr) => {
+                onError={(playerErr: string) => {
                   if (playerErr === 'video_not_found') {
                     setPlayerError('This video is unavailable.');
                     return;

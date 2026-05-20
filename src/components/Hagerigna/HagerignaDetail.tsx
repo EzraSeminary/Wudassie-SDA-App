@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableWithoutFeedback, TouchableOpacity, Share } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableWithoutFeedback, TouchableOpacity, Share, Animated } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
 import { RootStackParamList } from '../../../App';
-import { ArrowLeftIcon, ArrowsPointingOutIcon, EllipsisVerticalIcon, ArrowUpTrayIcon, AdjustmentsHorizontalIcon } from 'react-native-heroicons/outline';
+import { ArrowLeftIcon, ArrowsPointingOutIcon, EllipsisVerticalIcon, ArrowUpTrayIcon } from 'react-native-heroicons/outline';
 import { HeartIcon as SolidHeartIcon, HashtagIcon as SolidHashtagIcon } from 'react-native-heroicons/solid';
 import { HeartIcon as OutlineHeartIcon } from 'react-native-heroicons/outline';
 import FontSizePopup from './../CustomBottomSheet';
@@ -23,9 +23,12 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { loadFavorites, toggleFavorite } from '../../store/favoritesSlice';
 import Orientation from 'react-native-orientation-locker';
 import { useFloatingButtonLayout, getDefaultFontStyle } from '../../utils/platformUtils';
+import { buildSongShareMessage } from '../../utils/shareUtils';
 
 type SongDetailRouteProp = RouteProp<RootStackParamList, 'HagerignaDetail'>;
 type HagerignaDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'HagerignaDetail'>;
+
+const SCROLL_THRESHOLD = 55;
 
 const HagerignaDetail = () => {
   const { floatingButtonBottom, listBottomPadding } = useFloatingButtonLayout();
@@ -39,6 +42,8 @@ const HagerignaDetail = () => {
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
   const { favoriteIds = [], isLoaded: favoritesLoaded = false } = useSelector((state: RootState) => state.favorites) || {};
 
+  const scrollY = useRef(new Animated.Value(0)).current;
+
   const [isPopupVisible, setPopupVisible] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isNumpadVisible, setNumpadVisible] = useState(false);
@@ -48,6 +53,48 @@ const HagerignaDetail = () => {
   const [song, setSong] = useState<HagerignaHymn>(initialSong);
   const [fullSongData, setFullSongData] = useState<HagerignaHymn | null>(null);
   const [allSongs, setAllSongs] = useState<HagerignaHymn[]>([]);
+
+  // Animated interpolations for collapsing header
+  const subtitleOpacity = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD * 0.6],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+  const subtitleMaxHeight = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD * 0.6],
+    outputRange: [36, 0],
+    extrapolate: 'clamp',
+  });
+  const trackBoxSize = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [56, 36],
+    extrapolate: 'clamp',
+  });
+  const trackBoxNumberSize = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [20, 13],
+    extrapolate: 'clamp',
+  });
+  const headerPaddingTop = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [8, 2],
+    extrapolate: 'clamp',
+  });
+  const headerPaddingBottom = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [16, 4],
+    extrapolate: 'clamp',
+  });
+  const animTitleFontSize = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [fontSize + 6, fontSize + 1],
+    extrapolate: 'clamp',
+  });
+  const animTitleLineHeight = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [Math.round((fontSize + 6) * 1.45), Math.round((fontSize + 1) * 1.3)],
+    extrapolate: 'clamp',
+  });
 
   const handleOpenPopup = () => setPopupVisible(true);
   const handleClosePopup = () => setPopupVisible(false);
@@ -93,7 +140,6 @@ const HagerignaDetail = () => {
     loadSongs();
   }, []);
 
-  // Fetch full song data from API to get sheet_music and audio
   useEffect(() => {
     const fetchFullSongData = async () => {
       try {
@@ -102,7 +148,6 @@ const HagerignaDetail = () => {
         if (foundSong) {
           setFullSongData(foundSong);
         } else {
-          // If not found by ID, try to find by title
           const foundByTitle = allSongs.find((s: HagerignaHymn) => s.title === song.title);
           if (foundByTitle) {
             setFullSongData(foundByTitle);
@@ -118,39 +163,24 @@ const HagerignaDetail = () => {
   }, [song.id, song.title]);
 
   useEffect(() => {
-    // Lock to portrait when not in fullscreen
     if (!isFullScreen) {
       Orientation.lockToPortrait();
     }
-    // Orientation is handled by FullScreenVerse when it's visible
   }, [isFullScreen]);
 
   const handleToggleFavorite = () => {
     dispatch(toggleFavorite(song.id, song.title));
   };
 
-  // Clean lyrics by removing tags and formatting
-  const cleanLyrics = (lyrics: string): string => {
-    return lyrics
-      .replace(/\\n/g, '\n')
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0)
-      .join('\n');
-  };
-
-  // Share song as plain text
   const handleShare = async () => {
     try {
-      const cleanText = cleanLyrics(song.song);
-      const shareText = song.artist 
-        ? `${songNumber}. ${song.title}\n${song.artist}\n\n${cleanText}`
-        : `${songNumber}. ${song.title}\n\n${cleanText}`;
-      
-      await Share.share({
-        message: shareText,
+      const shareText = buildSongShareMessage({
+        songNumber,
         title: song.title,
+        lyrics: song.song,
+        artist: song.artist,
       });
+      await Share.share({ message: shareText, title: song.title });
     } catch (error) {
       console.error('Error sharing song:', error);
     }
@@ -158,9 +188,7 @@ const HagerignaDetail = () => {
 
   const totalSongs = allSongs.length;
 
-  const handleBackPress = () => {
-    navigation.goBack();
-  };
+  const handleBackPress = () => navigation.goBack();
 
   const handleJumpToSong = (songNum: number) => {
     const newSongIndex = songNum - 1;
@@ -168,18 +196,9 @@ const HagerignaDetail = () => {
 
     setNumpadVisible(false);
     const nextSong = allSongs[newSongIndex];
-    if (!nextSong) {
-      return;
-    }
+    if (!nextSong) return;
 
-    const newSongData: HagerignaHymn = {
-      ...nextSong,
-    };
-
-    navigation.setParams({
-      song: newSongData,
-      songNumber: songNum,
-    });
+    navigation.setParams({ song: nextSong, songNumber: songNum });
   };
 
   const navigateToSong = (direction: 'next' | 'previous') => {
@@ -194,9 +213,7 @@ const HagerignaDetail = () => {
     handleJumpToSong(newSongNum);
   };
 
-  const handleSwipeNavigation = (direction: 'next' | 'previous') => {
-    navigateToSong(direction);
-  };
+  const handleSwipeNavigation = (direction: 'next' | 'previous') => navigateToSong(direction);
 
   const panGesture = Gesture.Pan()
     .minDistance(50)
@@ -214,19 +231,10 @@ const HagerignaDetail = () => {
 
   const accentColor = tw.color('accent-6') ?? '#EA9215';
   const mutedIconColor = isDarkMode ? '#9CA3AF' : '#6B7280';
+
   const dynamicStyles = {
     container: tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`,
-    title: [
-      tw`font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
-      getDefaultFontStyle('bold'),
-      {
-        fontSize: fontSize + 6,
-        lineHeight: Math.round((fontSize + 6) * 1.45),
-        paddingTop: 4,
-        paddingBottom: 8,
-        includeFontPadding: true,
-      },
-    ],
+    header: tw`flex-row justify-between items-center px-4 py-3 font-nokia-bold`,
     artist: [
       tw`text-sm font-nokia-bold ${isDarkMode ? 'text-primary-6' : 'text-secondary-6'}`,
       getDefaultFontStyle('bold'),
@@ -248,15 +256,13 @@ const HagerignaDetail = () => {
         includeFontPadding: true,
       },
     ],
-    header: tw`flex-row justify-between items-center px-4 py-3 font-nokia-bold`,
-    trackBox: tw`w-14 h-14 rounded-xl bg-accent-5 items-center justify-center`,
-    divider: tw`h-px mt-4 ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-6'}`,
+    divider: tw`h-px mt-3 ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-6'}`,
   };
 
   if (!song) {
     return (
       <View style={dynamicStyles.container}>
-        <Text style={{color: isDarkMode ? 'white' : 'black'}}>Loading...</Text>
+        <Text style={{ color: isDarkMode ? 'white' : 'black' }}>Loading...</Text>
       </View>
     );
   }
@@ -265,7 +271,7 @@ const HagerignaDetail = () => {
     <GestureDetector gesture={panGesture}>
       <View style={dynamicStyles.container}>
         <SafeAreaView style={tw`flex-1`} edges={['top']}>
-          {/* Top bar: back + action icons in one row */}
+          {/* Top bar */}
           <View style={[dynamicStyles.header, { paddingTop: Math.max(insets.top + 8, 20) }]}>
             <TouchableWithoutFeedback onPress={handleBackPress}>
               <View style={tw`p-2`}>
@@ -292,7 +298,7 @@ const HagerignaDetail = () => {
                 </View>
               </TouchableWithoutFeedback>
               <TouchableOpacity onPress={handleOpenPopup} style={tw`p-2`}>
-                <AdjustmentsHorizontalIcon size={22} color={mutedIconColor} />
+                <Text style={[tw`font-nokia-bold text-base`, { color: mutedIconColor }]}>Aa</Text>
               </TouchableOpacity>
               {(hasSheetMusic || hasAudio) ? (
                 <TouchableWithoutFeedback onPress={handleOpenMoreMenu}>
@@ -304,38 +310,84 @@ const HagerignaDetail = () => {
             </View>
           </View>
 
-          {/* Track info: number box + title & artist with vertical bar */}
-          <View style={tw`px-5 pt-2 pb-4`}>
+          {/* Animated track info: number box + title + artist */}
+          <Animated.View
+            style={[
+              tw`px-5`,
+              { paddingTop: headerPaddingTop, paddingBottom: headerPaddingBottom },
+            ]}
+          >
             <View style={tw`flex-row items-center`}>
-              <View style={dynamicStyles.trackBox}>
-                <Text style={[tw`text-white font-nokia-bold text-xl`, getDefaultFontStyle('bold')]}>
+              {/* Animated number box */}
+              <Animated.View
+                style={[
+                  tw`rounded-xl bg-accent-5 items-center justify-center`,
+                  { width: trackBoxSize, height: trackBoxSize },
+                ]}
+              >
+                <Animated.Text
+                  style={[
+                    tw`text-white font-nokia-bold`,
+                    getDefaultFontStyle('bold'),
+                    { fontSize: trackBoxNumberSize },
+                  ]}
+                >
                   {songNumber}
-                </Text>
-              </View>
+                </Animated.Text>
+              </Animated.View>
+
               <View style={tw`flex-1 ml-4 min-w-0`}>
-                <Text style={[dynamicStyles.title, tw`font-nokia-bold`]}>
+                {/* Animated title */}
+                <Animated.Text
+                  style={[
+                    tw`font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
+                    getDefaultFontStyle('bold'),
+                    {
+                      fontSize: animTitleFontSize,
+                      lineHeight: animTitleLineHeight,
+                      paddingTop: 4,
+                      paddingBottom: 4,
+                      includeFontPadding: true,
+                    },
+                  ]}
+                >
                   {song.title}
-                </Text>
+                </Animated.Text>
+
+                {/* Animated artist — fades out and collapses on scroll */}
                 {song.artist ? (
-                  <View style={tw`flex-row items-center mt-1.5`}>
-                    <View style={tw`w-1 h-4 rounded-full bg-accent-6 mr-2`} />
-                    <Text style={dynamicStyles.artist} numberOfLines={1}>
-                      {song.artist}
-                    </Text>
-                  </View>
+                  <Animated.View
+                    style={{
+                      opacity: subtitleOpacity,
+                      maxHeight: subtitleMaxHeight,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <View style={tw`flex-row items-center mt-1`}>
+                      <View style={tw`w-1 h-4 rounded-full bg-accent-6 mr-2`} />
+                      <Text style={dynamicStyles.artist} numberOfLines={1}>
+                        {song.artist}
+                      </Text>
+                    </View>
+                  </Animated.View>
                 ) : null}
               </View>
             </View>
             <View style={dynamicStyles.divider} />
-          </View>
+          </Animated.View>
 
-          {/* Lyrics */}
-          <ScrollView
+          {/* Lyrics with scroll tracking */}
+          <Animated.ScrollView
             style={tw`flex-1`}
             showsVerticalScrollIndicator={false}
             scrollEnabled={true}
             bounces={true}
             contentContainerStyle={{ paddingBottom: listBottomPadding }}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+              { useNativeDriver: false },
+            )}
+            scrollEventThrottle={16}
           >
             <View style={tw`p-5`}>
               <SelectableLyrics
@@ -344,15 +396,15 @@ const HagerignaDetail = () => {
                 selectionColor={accentColor}
               />
             </View>
-          </ScrollView>
+          </Animated.ScrollView>
         </SafeAreaView>
 
         {/* Floating Circular Numpad Button */}
         <TouchableOpacity
           onPress={handleOpenNumpad}
-        style={[
-          tw`absolute right-5 w-16 h-16 bg-accent-6 rounded-full items-center justify-center`,
-          { bottom: floatingButtonBottom },
+          style={[
+            tw`absolute right-5 w-16 h-16 bg-accent-6 rounded-full items-center justify-center`,
+            { bottom: floatingButtonBottom },
             {
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 4 },
@@ -404,7 +456,7 @@ const HagerignaDetail = () => {
           song={{
             title: song.title,
             lyrics: song.song,
-            singer: song.artist
+            singer: song.artist,
           }}
           isVisible={isFullScreen}
           onClose={() => setIsFullScreen(false)}

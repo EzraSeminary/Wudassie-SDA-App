@@ -132,7 +132,8 @@ const HagerignaList = () => {
     return list.filter((song) =>
       song.title.toLowerCase().includes(query) ||
       (song.artist || '').toLowerCase().includes(query) ||
-      song.id.toString().includes(query)
+      song.id.toString().includes(query) ||
+      (song.song || '').toLowerCase().includes(query)
     );
   }, [normalizedSongs, viewMode, selectedSinger, searchQuery]);
 
@@ -313,8 +314,8 @@ const HagerignaList = () => {
   const searchPlaceholder = viewMode === 'singers'
     ? 'Search singers...'
     : viewMode === 'singerSongs'
-      ? 'Search songs by title or number...'
-      : 'Search by title, artist or number...';
+      ? 'Search titles or lyrics...'
+      : 'Search titles, artist or lyrics...';
 
   return (
     <View style={dynamicStyles.container}>

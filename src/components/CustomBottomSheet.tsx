@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Modal, Pressable } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity, Modal, Pressable } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState, setFontSize, setFontSizeWithPersistence, AppDispatch } from '../store';
+import { RootState, setFontSizeWithPersistence, AppDispatch } from '../store';
 import tw from './../../tailwind';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MinusIcon, PlusIcon } from 'react-native-heroicons/outline';
 
 type FontSizePopupProps = {
   visible: boolean;
@@ -11,84 +13,103 @@ type FontSizePopupProps = {
   previewText?: string;
 };
 
+const MIN_FONT_SIZE = 12;
+const MAX_FONT_SIZE = 32;
+
 const FontSizePopup = ({ visible, onClose, previewText = 'የሱስ ክርስቶስ የኔ ወዳጅ' }: FontSizePopupProps) => {
   const fontSize = useSelector((state: RootState) => state.fontSize.fontSize);
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
   const dispatch = useDispatch<AppDispatch>();
   const [draftFontSize, setDraftFontSize] = useState(fontSize);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (visible) {
       setDraftFontSize(fontSize);
     }
-  }, [fontSize, visible]);
+  }, [visible, fontSize]);
 
-  const handleValueChange = (value: number) => {
-    const nextFontSize = Math.round(value);
-    setDraftFontSize(nextFontSize);
-    dispatch(setFontSize(nextFontSize));
-  };
+  const updateFontSize = useCallback((next: number) => {
+    setDraftFontSize(next);
+    dispatch(setFontSizeWithPersistence(next));
+  }, [dispatch]);
 
-  const handleSlidingComplete = (value: number) => {
-    dispatch(setFontSizeWithPersistence(Math.round(value)));
-  };
-
-  const handleClose = () => {
-    dispatch(setFontSizeWithPersistence(draftFontSize));
-    onClose();
+  const adjustFontSize = (delta: number) => {
+    const next = Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, draftFontSize + delta));
+    updateFontSize(next);
   };
 
   return (
     <Modal
-      animationType="fade"
-      transparent
       visible={visible}
-      onRequestClose={handleClose}
+      transparent
+      animationType="fade"
       statusBarTranslucent
+      onRequestClose={onClose}
     >
-      <Pressable style={tw`flex-1 bg-black/50 justify-center items-center px-6`} onPress={handleClose}>
+      <Pressable
+        onPress={onClose}
+        style={tw`flex-1 justify-end bg-black/30`}
+      >
         <Pressable
           onPress={(event) => event.stopPropagation()}
           style={[
-            tw`w-full rounded-2xl px-6 py-7 items-center ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-1'}`,
-            { maxWidth: 360 },
+            tw`${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-1'} rounded-t-[32px] px-5 pt-4`,
+            { paddingBottom: Math.max(insets.bottom, 10) },
           ]}
         >
-          <Text style={tw`text-xl font-nokia-bold mb-5 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
-            Adjust Font Size
-          </Text>
-          <Slider
-            style={tw`w-full h-10 mb-3`}
-            minimumValue={12}
-            maximumValue={32}
-            step={1}
-            value={draftFontSize}
-            onValueChange={handleValueChange}
-            onSlidingComplete={handleSlidingComplete}
-            minimumTrackTintColor="#EA9215"
-            maximumTrackTintColor={isDarkMode ? '#3A4750' : '#EEEEEE'}
-          />
-          <View style={tw`w-full flex-row justify-between mb-4`}>
-            <Text style={tw`text-sm font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>Small</Text>
-            <Text style={tw`text-sm font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>Large</Text>
+          <View style={tw`self-center mb-3 h-1 w-10 rounded-full ${isDarkMode ? 'bg-dark-primary-6' : 'bg-primary-6'}`} />
+
+          <View style={tw`flex-row items-center justify-between mb-3`}>
+            <Text style={tw`text-lg font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
+              Font Size
+            </Text>
+            <Text style={tw`text-sm font-nokia-bold text-accent-6`}>{draftFontSize}</Text>
           </View>
+
+          <View style={tw`flex-row items-center mb-3`}>
+            <TouchableOpacity
+              onPress={() => adjustFontSize(-1)}
+              activeOpacity={0.8}
+              style={tw`mr-3 h-10 w-10 rounded-full items-center justify-center ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-2'}`}
+            >
+              <MinusIcon size={16} color={isDarkMode ? '#F3F4F6' : '#1F2937'} />
+            </TouchableOpacity>
+
+            <Slider
+              style={tw`flex-1 h-10`}
+              minimumValue={MIN_FONT_SIZE}
+              maximumValue={MAX_FONT_SIZE}
+              step={1}
+              value={draftFontSize}
+              onValueChange={(value) => setDraftFontSize(Math.round(value))}
+              onSlidingComplete={(value) => updateFontSize(Math.round(value))}
+              minimumTrackTintColor="#EA9215"
+              maximumTrackTintColor={isDarkMode ? '#3A4750' : '#D5D9E0'}
+              thumbTintColor="#EA9215"
+            />
+
+            <TouchableOpacity
+              onPress={() => adjustFontSize(1)}
+              activeOpacity={0.8}
+              style={tw`ml-3 h-10 w-10 rounded-full items-center justify-center bg-accent-6`}
+            >
+              <PlusIcon size={16} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+
           <Text
+            numberOfLines={1}
             style={[
-              tw`text-center font-nokia-bold mb-6 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
+              tw`text-center font-nokia-bold mb-1 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
               {
-                fontSize: draftFontSize,
-                lineHeight: Math.round(draftFontSize * 1.65),
-                paddingTop: 6,
-                paddingBottom: 10,
-                includeFontPadding: true,
+                fontSize: Math.min(draftFontSize, 22),
+                lineHeight: Math.round(Math.min(draftFontSize, 22) * 1.35),
               },
             ]}
           >
             {previewText}
           </Text>
-          <Pressable onPress={handleClose} style={tw`px-6 py-3 rounded-xl bg-accent-6`}>
-            <Text style={tw`text-white font-nokia-bold`}>Close</Text>
-          </Pressable>
         </Pressable>
       </Pressable>
     </Modal>

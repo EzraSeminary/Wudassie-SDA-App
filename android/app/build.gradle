@@ -72,6 +72,19 @@ def enableProguardInReleaseBuilds = false
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+def wudassieUploadStorePath = project.findProperty('WUDASSIE_UPLOAD_STORE_FILE')
+def wudassieUploadKeystore = wudassieUploadStorePath ? file(wudassieUploadStorePath) : null
+def useWudassieReleaseSigning =
+    wudassieUploadKeystore != null && wudassieUploadKeystore.isFile()
+def requestedTasks = gradle.startParameter.taskNames*.toLowerCase()
+def isReleaseBuildRequested = requestedTasks.any { it.contains('release') }
+
+if (isReleaseBuildRequested && !useWudassieReleaseSigning) {
+    throw new GradleException(
+        "Release signing keystore not found. Set WUDASSIE_UPLOAD_STORE_FILE to your original upload keystore before building a release."
+    )
+}
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -82,8 +95,8 @@ android {
         applicationId "com.wudassieapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 4
-        versionName "1.0"
+        versionCode 6
+        versionName "1.0.1"
     }
     signingConfigs {
         debug {
@@ -93,8 +106,8 @@ android {
             keyPassword 'android'
         }
         release {
-            if (project.hasProperty('WUDASSIE_UPLOAD_STORE_FILE')) {
-                storeFile file(WUDASSIE_UPLOAD_STORE_FILE)
+            if (useWudassieReleaseSigning) {
+                storeFile wudassieUploadKeystore
                 storePassword WUDASSIE_UPLOAD_STORE_PASSWORD
                 keyAlias WUDASSIE_UPLOAD_KEY_ALIAS
                 keyPassword WUDASSIE_UPLOAD_KEY_PASSWORD
@@ -106,12 +119,7 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            // Signing with release keystore
-            if (project.hasProperty('WUDASSIE_UPLOAD_STORE_FILE')) {
-                signingConfig signingConfigs.release
-            } else {
-                signingConfig signingConfigs.debug
-            }
+            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
