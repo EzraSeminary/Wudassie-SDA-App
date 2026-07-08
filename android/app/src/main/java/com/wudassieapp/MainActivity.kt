@@ -25,7 +25,9 @@ class MainActivity : ReactActivity() {
       DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
 
   override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
+    // react-native-screens fragments must be recreated by React Native, not restored
+    // by Android's saved FragmentManager state.
+    super.onCreate(null)
 
     // Apply status bar and navigation bar colors from resources so Android system bars
     // match the app theme colors defined in res/values/colors.xml (and night variants).

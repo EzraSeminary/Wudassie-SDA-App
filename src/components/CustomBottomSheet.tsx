@@ -31,6 +31,7 @@ const FontSizePopup = ({
 
   const bottomSheetRef = useRef<BottomSheet>(null);
   const insets = useSafeAreaInsets();
+  const snapPoints = useRef(['36%']).current;
 
   // Mirror MoreMenu exactly: both index prop + ref calls
   useEffect(() => {
@@ -46,7 +47,9 @@ const FontSizePopup = ({
 
   const handleSheetChanges = useCallback(
     (index: number) => {
-      if (index === -1) onClose();
+      if (index === -1) {
+        onClose();
+      }
     },
     [onClose],
   );
@@ -79,7 +82,7 @@ const FontSizePopup = ({
     <BottomSheet
       ref={bottomSheetRef}
       index={visible ? 0 : -1}
-      enableDynamicSizing
+      snapPoints={snapPoints}
       onChange={handleSheetChanges}
       enablePanDownToClose
       backdropComponent={renderBackdrop}
@@ -88,6 +91,7 @@ const FontSizePopup = ({
         tw`w-12 h-1.5 rounded-full`,
         isDarkMode ? tw`bg-dark-primary-6` : tw`bg-primary-6`,
       ]}
+      bottomInset={insets.bottom}
     >
       <BottomSheetView style={tw`px-5 pt-1`}>
         {/* Title + value */}

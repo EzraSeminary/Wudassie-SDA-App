@@ -274,7 +274,6 @@ const SongDetail = () => {
               <TouchableOpacity onPress={handleOpenPopup} style={tw`p-2`}>
                 <Text style={[tw`font-nokia-bold text-base`, { color: mutedIconColor }]}>Aa</Text>
               </TouchableOpacity>
-              {/* TODO: Sheet music & audio menu — re-enable for next release
               {(hasSheetMusic || hasAudio) ? (
                 <TouchableWithoutFeedback onPress={handleOpenMoreMenu}>
                   <View style={tw`p-2`}>
@@ -282,7 +281,6 @@ const SongDetail = () => {
                   </View>
                 </TouchableWithoutFeedback>
               ) : null}
-              */}
             </View>
           </View>
 
@@ -409,7 +407,6 @@ const SongDetail = () => {
           maxSongs={totalSongs}
           title="Hymnal"
         />
-        {/* TODO: Sheet music & audio menu — re-enable for next release
         <MoreMenu
           visible={isMoreMenuVisible}
           onClose={handleCloseMoreMenu}
@@ -435,7 +432,6 @@ const SongDetail = () => {
             title={song.title}
           />
         )}
-        */}
       </View>
     </GestureDetector>
   );
