@@ -10,10 +10,11 @@ import { BookOpenIcon, MagnifyingGlassIcon as OutlineSearchIcon, XMarkIcon as So
 import { HeartIcon as SolidHeartIcon, HashtagIcon as SolidHashtagIcon } from 'react-native-heroicons/solid';
 import { HeartIcon as OutlineHeartIcon } from 'react-native-heroicons/outline';
 import NumpadModal from './NumpadModal';
-import { getCardStyle, useFloatingButtonLayout } from '../utils/platformUtils';
+import { useFloatingButtonLayout } from '../utils/platformUtils';
 import {loadFavorites, toggleFavorite} from '../store/favoritesSlice';
 import { hymnalService, SDAHymn } from '../services/hymnalService';
 import tw from '../../tailwind';
+import { GlassBackground, GlassGradientBorder, glassSurface, useGlassTheme } from './glass/GlassBackground';
 
 type Song = {
   id: string;
@@ -35,7 +36,7 @@ const SongList = () => {
   const [isSearchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const navigation = useNavigation<SongListNavigationProp>();
-  const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
+  const glass = useGlassTheme();
   const dispatch: AppDispatch = useDispatch();
   const { favoriteIds = [], isLoaded: favoritesLoaded = false } = useSelector((state: RootState) => state.favorites) || {};
   const [songs, setSongs] = useState<Song[]>([]);
@@ -130,18 +131,20 @@ const SongList = () => {
     
     return (
       <TouchableOpacity onPress={() => handleSelect(item, index)} style={[
-        tw`flex-row items-center rounded-xl mt-2 mx-4 p-4 ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
-        getCardStyle()
-      ]}>
-        <Text style={tw`text-2xl font-nokia-bold mr-4 text-accent-6 min-w-[35px]`}>
+        tw`flex-row items-center rounded-2xl mt-2 mx-4 p-4`,
+        glassSurface(glass, songNumber % 7 === 0),
+        songNumber % 7 === 0 ? { shadowColor: glass.accent, shadowOpacity: 0.24 } : null,
+      ]} activeOpacity={0.82}>
+        <GlassGradientBorder radius={16} />
+        <Text style={[tw`text-2xl font-nokia-bold mr-4 min-w-[35px]`, { color: glass.accent }]}>
           {songNumber}
         </Text>
         <View style={tw`ml-3 flex-1`}>
-          <Text style={tw`text-2xl font-nokia-bold leading-6 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`} numberOfLines={2}>
+          <Text style={[tw`text-2xl font-nokia-bold leading-6`, { color: glass.text }]} numberOfLines={2}>
             {item.title}
           </Text>
           {item.englishTitle && (
-            <Text style={tw`font-nokia-bold mt-1 text-accent-6`} numberOfLines={1}>
+            <Text style={[tw`font-nokia-bold mt-1`, { color: glass.accent }]} numberOfLines={1}>
               {item.englishTitle}
             </Text>
           )}
@@ -158,22 +161,22 @@ const SongList = () => {
   };
 
   return (
-    <View style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}>
+    <GlassBackground>
       <SafeAreaView style={tw`flex-1`} edges={['left', 'right']}>
         {/* Fixed Header */}
         <View style={[tw`flex-row items-center justify-between px-4 pb-4`, { paddingTop: headerTopPadding }]}>
           <View style={tw`flex-row items-center flex-1`}>
-            <BookOpenIcon size={28} color="#EA9215" />
-            <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
+            <BookOpenIcon size={28} color={glass.accent} />
+            <Text style={[tw`text-2xl font-nokia-bold ml-3`, { color: glass.text }]}>
               Hymnal Songs
             </Text>
           </View>
           <TouchableWithoutFeedback onPress={handleToggleSearch}>
             <View style={tw`p-2`}>
               {isSearchVisible ? (
-                <SolidXMarkIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
+                <SolidXMarkIcon size={24} color={glass.text} />
               ) : (
-                <OutlineSearchIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
+                <OutlineSearchIcon size={24} color={glass.text} />
               )}
             </View>
           </TouchableWithoutFeedback>
@@ -185,11 +188,12 @@ const SongList = () => {
             <View style={tw`px-4 pb-4`}>
               <TextInput
                 style={[
-                  tw`h-12 rounded-lg px-4 border-2 font-nokia-bold ${isDarkMode ? 'bg-dark-primary-8 border-dark-primary-6 text-dark-secondary-1' : 'bg-primary-3 border-primary-6 text-secondary-10'}`,
-                  getCardStyle()
+                  tw`h-12 rounded-2xl px-4 font-nokia-bold`,
+                  glassSurface(glass, true),
+                  { color: glass.text },
                 ]}
                 placeholder="Search titles or lyrics..."
-                placeholderTextColor={isDarkMode ? '#9CA3AF' : '#6B7280'}
+                placeholderTextColor={glass.mutedText}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 autoFocus
@@ -210,7 +214,7 @@ const SongList = () => {
             ListEmptyComponent={
               searchQuery ? (
                 <View style={tw`py-8 px-4 items-center`}>
-                  <Text style={tw`text-lg text-center font-nokia-bold ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`}>
+                  <Text style={[tw`text-lg text-center font-nokia-bold`, { color: glass.mutedText }]}>
                     No songs found for "{searchQuery}"
                   </Text>
                 </View>
@@ -224,10 +228,11 @@ const SongList = () => {
       <TouchableOpacity
         onPress={handleOpenNumpad}
         style={[
-          tw`absolute right-5 w-16 h-16 bg-accent-6 rounded-full items-center justify-center`,
+          tw`absolute right-5 w-16 h-16 rounded-full items-center justify-center`,
           { bottom: floatingButtonBottom },
           {
-            shadowColor: '#000',
+            backgroundColor: glass.accent,
+            shadowColor: glass.accent,
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.3,
             shadowRadius: 8,
@@ -246,7 +251,7 @@ const SongList = () => {
         maxSongs={songs.length}
         title="Hymnal"
       />
-    </View>
+    </GlassBackground>
   );
 };
 

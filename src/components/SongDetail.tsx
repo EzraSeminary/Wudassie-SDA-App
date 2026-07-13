@@ -23,6 +23,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import { useFloatingButtonLayout, getDefaultFontStyle } from '../utils/platformUtils';
 import { buildSongShareMessage } from '../utils/shareUtils';
+import { GlassBackground, GlassGradientBorder, glassSurface, glassTextShadow, useGlassTheme } from './glass/GlassBackground';
 
 type SongDetailRouteProp = RouteProp<RootStackParamList, 'SongDetail'>;
 type SongDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SongDetail'>;
@@ -36,7 +37,7 @@ const SongDetail = () => {
   const navigation = useNavigation<SongDetailNavigationProp>();
   const { song, songNumber } = route.params;
   const fontSize = useSelector((state: RootState) => state.fontSize.fontSize);
-  const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
+  const glass = useGlassTheme();
   const { favoriteIds = [], isLoaded: favoritesLoaded = false } = useSelector((state: RootState) => state.favorites) || {};
   const dispatch: AppDispatch = useDispatch();
 
@@ -212,15 +213,16 @@ const SongDetail = () => {
     })
     .simultaneousWithExternalGesture();
 
-  const accentColor = tw.color('accent-6') ?? '#EA9215';
-  const mutedIconColor = isDarkMode ? '#9CA3AF' : '#6B7280';
+  const accentColor = glass.accent;
+  const mutedIconColor = glass.mutedText;
 
   const dynamicStyles = {
-    header: tw`flex-row justify-between items-center px-4 py-3 font-nokia-bold`,
+    header: [tw`flex-row justify-between items-center mx-4 px-3 py-3 rounded-3xl font-nokia-bold`, glassSurface(glass, true)],
     subtitle: [
-      tw`text-sm font-nokia-bold ${isDarkMode ? 'text-primary-6' : 'text-secondary-6'}`,
+      tw`text-sm font-nokia-bold`,
       getDefaultFontStyle('bold'),
       {
+        color: glass.mutedText,
         lineHeight: 22,
         paddingTop: 2,
         paddingBottom: 4,
@@ -228,25 +230,27 @@ const SongDetail = () => {
       },
     ],
     lyrics: [
-      tw`font-nokia-bold mb-2 ${isDarkMode ? 'text-primary-6' : 'text-secondary-6'}`,
+      tw`font-nokia-bold mb-2`,
       getDefaultFontStyle('bold'),
       {
+        color: glass.text,
         fontSize,
         lineHeight: Math.round(fontSize * 1.7),
         paddingTop: 4,
         paddingBottom: 10,
         includeFontPadding: true,
+        ...glassTextShadow(glass.isDarkMode),
       },
     ],
-    divider: tw`h-px mt-3 ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-6'}`,
+    divider: [tw`h-px mt-3`, { backgroundColor: glass.border }],
   };
 
   return (
     <GestureDetector gesture={panGesture}>
-      <View style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}>
+      <GlassBackground>
         <SafeAreaView style={tw`flex-1`} edges={['top']}>
           {/* Top bar */}
-          <View style={[dynamicStyles.header, { paddingTop: Math.max(insets.top + 8, 20) }]}>
+          <View style={[dynamicStyles.header, { marginTop: Math.max(insets.top + 8, 20) }]}>
             <TouchableWithoutFeedback onPress={handleBackPress}>
               <View style={tw`p-2`}>
                 <ArrowLeftIcon size={24} color={accentColor} />
@@ -313,10 +317,11 @@ const SongDetail = () => {
               <View style={tw`flex-1 ml-4 min-w-0`}>
                 {/* Animated title */}
                 <Animated.Text
-                  style={[
-                    tw`font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
+                style={[
+                    tw`font-nokia-bold`,
                     getDefaultFontStyle('bold'),
                     {
+                      color: glass.text,
                       fontSize: animTitleFontSize,
                       lineHeight: animTitleLineHeight,
                       paddingTop: 4,
@@ -357,7 +362,7 @@ const SongDetail = () => {
             scrollEnabled={true}
             bounces={true}
             contentContainerStyle={{
-              padding: 20,
+              padding: 16,
               paddingBottom: listBottomPadding,
             }}
             onScroll={Animated.event(
@@ -366,11 +371,14 @@ const SongDetail = () => {
             )}
             scrollEventThrottle={16}
           >
-            <SelectableLyrics
-              text={song.lyrics}
-              style={dynamicStyles.lyrics}
-              selectionColor={accentColor}
-            />
+            <View style={[tw`rounded-3xl px-5 py-6`, glassSurface(glass, true)]}>
+              <GlassGradientBorder radius={24} />
+              <SelectableLyrics
+                text={song.lyrics}
+                style={dynamicStyles.lyrics}
+                selectionColor={accentColor}
+              />
+            </View>
           </Animated.ScrollView>
         </SafeAreaView>
 
@@ -378,10 +386,11 @@ const SongDetail = () => {
         <TouchableOpacity
           onPress={handleOpenNumpad}
           style={[
-            tw`absolute right-5 w-16 h-16 bg-accent-6 rounded-full items-center justify-center`,
+            tw`absolute right-5 w-16 h-16 rounded-full items-center justify-center`,
             { bottom: floatingButtonBottom },
             {
-              shadowColor: '#000',
+              backgroundColor: glass.accent,
+              shadowColor: glass.accent,
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.3,
               shadowRadius: 8,
@@ -432,7 +441,7 @@ const SongDetail = () => {
             title={song.title}
           />
         )}
-      </View>
+      </GlassBackground>
     </GestureDetector>
   );
 };

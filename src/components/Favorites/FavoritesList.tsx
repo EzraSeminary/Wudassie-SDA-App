@@ -13,6 +13,7 @@ import { hymnalService, HagerignaHymn } from '../../services/hymnalService';
 import { RootState, AppDispatch } from '../../store';
 import { loadFavorites, toggleFavorite } from '../../store/favoritesSlice';
 import { RootStackParamList } from '../../../App';
+import { GlassBackground, GlassGradientBorder, glassSurface, useGlassTheme } from '../glass/GlassBackground';
 
 type FavoritesListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'FavoritesList'>;
 
@@ -44,7 +45,7 @@ const FavoritesList = () => {
   const dispatch: AppDispatch = useDispatch();
 
   const { favoriteIds = [], isLoaded: favoritesLoaded = false } = useSelector((state: RootState) => state.favorites) || {};
-  const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
+  const glass = useGlassTheme();
 
   useEffect(() => {
     if (!favoritesLoaded) {
@@ -149,42 +150,41 @@ const FavoritesList = () => {
   };
 
   const dynamicStyles = {
-    container: tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`,
     songItem: [
-      tw`flex-row items-center rounded-xl mt-2 mx-4 p-4 ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
-      getCardStyle()
+      tw`flex-row items-center rounded-2xl mt-2 mx-4 p-4`,
+      glassSurface(glass),
     ],
-    songTitle: tw`text-lg font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
-    artistName: tw`text-sm font-nokia-bold ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`,
-    emptyText: tw`text-center font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
-    header: tw`flex-row items-center px-5 pb-2 border-b ${isDarkMode ? 'border-dark-primary-8' : 'border-primary-6'}`,
-    toggleButton: tw`flex-1 py-3 px-4 mx-2 rounded-lg ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
-    toggleButtonActive: tw`flex-1 py-3 px-4 mx-2 rounded-lg bg-accent-6`,
-    toggleButtonText: tw`text-center font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
+    songTitle: [tw`text-lg font-nokia-bold`, { color: glass.text }],
+    artistName: [tw`text-sm font-nokia-bold`, { color: glass.mutedText }],
+    emptyText: [tw`text-center font-nokia-bold`, { color: glass.text }],
+    header: [tw`flex-row items-center px-5 pb-2 border-b`, { borderColor: glass.border }],
+    toggleButton: [tw`flex-1 py-3 px-4 mx-2 rounded-2xl`, glassSurface(glass)],
+    toggleButtonActive: [tw`flex-1 py-3 px-4 mx-2 rounded-2xl`, { backgroundColor: glass.accent }],
+    toggleButtonText: [tw`text-center font-nokia-bold`, { color: glass.text }],
     toggleButtonTextActive: tw`text-center font-nokia-bold text-white`,
   };
 
   if (hymnsLoading && !favoritesLoaded) {
     return (
-      <View style={dynamicStyles.container}>
+      <GlassBackground>
         <SafeAreaView style={tw`flex-1`} edges={['left', 'right']}>
           <View style={tw`flex-1 justify-center items-center`}>
             <ActivityIndicator size="large" color="#EA9215" />
           </View>
         </SafeAreaView>
-      </View>
+      </GlassBackground>
     );
   }
 
   if (error) {
     return (
-      <View style={dynamicStyles.container}>
+      <GlassBackground>
         <SafeAreaView style={tw`flex-1`} edges={['left', 'right']}>
           <View style={tw`flex-1 justify-center items-center`}>
             <Text style={dynamicStyles.emptyText}>{error}</Text>
           </View>
         </SafeAreaView>
-      </View>
+      </GlassBackground>
     );
   }
 
@@ -219,11 +219,11 @@ const FavoritesList = () => {
 
   if (currentFavorites.length === 0) {
     return (
-      <View style={dynamicStyles.container}>
+      <GlassBackground>
         <SafeAreaView style={tw`flex-1`} edges={['left', 'right']}>
           <View style={[dynamicStyles.header, { paddingTop: headerTopPadding }]}>
-            <MusicalNoteIcon size={28} color="#EA9215" />
-            <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
+            <MusicalNoteIcon size={28} color={glass.accent} />
+            <Text style={[tw`text-2xl font-nokia-bold ml-3`, { color: glass.text }]}>
               Favorite Songs
             </Text>
           </View>
@@ -232,12 +232,12 @@ const FavoritesList = () => {
             <Text style={[dynamicStyles.emptyText, tw`text-xl`]}>
               No favorite {selectedType === 'hymnal' ? 'hymnal' : 'Hagerigna'} songs yet.
             </Text>
-            <Text style={tw`text-center font-nokia-bold mt-2 ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`}>
+            <Text style={[tw`text-center font-nokia-bold mt-2`, { color: glass.mutedText }]}>
               Tap the heart on a song to add it here.
             </Text>
           </View>
         </SafeAreaView>
-      </View>
+      </GlassBackground>
     );
   }
   
@@ -249,7 +249,8 @@ const FavoritesList = () => {
     
     return (
       <TouchableOpacity onPress={() => handlePressSong(item)} style={dynamicStyles.songItem}>
-        <Text style={tw`text-2xl font-nokia-bold mr-4 text-accent-6 min-w-[35px]`}>
+        <GlassGradientBorder radius={16} />
+        <Text style={[tw`text-2xl font-nokia-bold mr-4 min-w-[35px]`, { color: glass.accent }]}>
           {songIndex + 1}
         </Text>
         <View style={tw`ml-3 flex-1`}>
@@ -270,11 +271,11 @@ const FavoritesList = () => {
   };
 
   return (
-    <View style={dynamicStyles.container}>
+    <GlassBackground>
       <SafeAreaView style={tw`flex-1`} edges={['left', 'right']}>
         <View style={[dynamicStyles.header, { paddingTop: headerTopPadding }]}>
-          <MusicalNoteIcon size={28} color="#EA9215" />
-          <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
+          <MusicalNoteIcon size={28} color={glass.accent} />
+          <Text style={[tw`text-2xl font-nokia-bold ml-3`, { color: glass.text }]}>
             Favorite Songs
           </Text>
         </View>
@@ -287,7 +288,7 @@ const FavoritesList = () => {
           contentContainerStyle={[tw`pb-24` as any, { paddingBottom: contentBottomPadding }]}
         />
       </SafeAreaView>
-    </View>
+    </GlassBackground>
   );
 };
 

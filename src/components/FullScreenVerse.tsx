@@ -6,7 +6,6 @@ import {
   Dimensions, 
   BackHandler,
   StatusBar,
-  Platform,
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
@@ -15,11 +14,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowsPointingInIcon, ChevronLeftIcon, ChevronRightIcon } from 'react-native-heroicons/outline';
 import { RootState } from '../store';
 import tw from '../../tailwind';
-import Orientation from 'react-native-orientation-locker';
 import { useNavigation } from '@react-navigation/native';
 import KeepAwake from 'react-native-keep-awake';
 import FontSizePopup from './CustomBottomSheet';
 import SelectableLyrics from './SelectableLyrics';
+import { GlassBackground, glassSurface, useGlassTheme } from './glass/GlassBackground';
 
 interface FullScreenVerseProps {
   song: {
@@ -39,8 +38,8 @@ interface LyricSection {
 }
 
 const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onClose }) => {
-  const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
   const fontSize = useSelector((state: RootState) => state.fontSize.fontSize);
+  const glass = useGlassTheme();
   const navigation = useNavigation();
   const [currentSection, setCurrentSection] = useState(0);
   const [lyricSections, setLyricSections] = useState<LyricSection[]>([]);
@@ -99,23 +98,11 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
   };
 
   const handleClose = useCallback(() => {
-    if (Platform.OS === 'ios') {
-      Orientation.unlockAllOrientations();
-    } else {
-      Orientation.unlockAllOrientations();
-    }
     onClose();
   }, [onClose]);
 
   useEffect(() => {
     if (isVisible && song) {
-      // Force landscape orientation
-      if (Platform.OS === 'ios') {
-        Orientation.lockToLandscapeLeft();
-      } else {
-        Orientation.lockToLandscape();
-      }
-      
       // Parse the lyrics
       const sections = parseLyrics(song.lyrics || song.verse || '');
       setLyricSections(sections);
@@ -137,11 +124,10 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
       return () => {
         subscription?.remove();
         backHandler.remove();
-        Orientation.unlockAllOrientations();
       };
     } else {
-      // Unlock orientation when not visible
-      Orientation.unlockAllOrientations();
+      setLyricSections([]);
+      setCurrentSection(0);
     }
   }, [isVisible, song, handleClose]);
 
@@ -166,12 +152,6 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
     return null;
   }
 
-  if (lyricSections.length === 0 && song) {
-    const sections = parseLyrics(song.lyrics || song.verse || '');
-    setLyricSections(sections);
-    setCurrentSection(0);
-  }
-
   if (!lyricSections.length) {
     return null;
   }
@@ -183,18 +163,19 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
     <View style={tw`absolute inset-0 z-50`}>
       <StatusBar hidden />
       <KeepAwake />
+      <GlassBackground>
       <SafeAreaView 
-        style={tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`}
+        style={tw`flex-1`}
         edges={['left', 'right']}
       >
         <View style={tw`flex-1 relative`}>
           {/* Header */}
           <View style={tw`flex-row items-center justify-between px-6 py-4 `}>
             <View style={tw`flex-1`}>
-              <Text style={tw`text-lg font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
+              <Text style={[tw`text-lg font-nokia-bold`, { color: glass.text }]}>
                {song.title}
               </Text>
-              <Text style={tw`text-sm font-nokia-bold text-accent-6`}>
+              <Text style={[tw`text-sm font-nokia-bold`, { color: glass.accent }]}>
                 {currentLyricSection.type === 'verse' 
                   ? `Slide ${currentLyricSection.number}` 
                   : 'Slide'
@@ -205,7 +186,7 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
             {/* Font Size Button */}
             <TouchableWithoutFeedback onPress={handleOpenFontSizePopup}>
               <View style={tw`p-2 mr-2`}>
-                <Text style={[tw`font-nokia-bold text-lg`, { color: isDarkMode ? '#FDFDFD' : '#1A2024' }]}>Aa</Text>
+                <Text style={[tw`font-nokia-bold text-lg`, { color: glass.text }]}>Aa</Text>
               </View>
             </TouchableWithoutFeedback>
             
@@ -213,7 +194,7 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
               <View style={tw`p-2`}>
                 <ArrowsPointingInIcon 
                   size={24} 
-                  color={isDarkMode ? '#FDFDFD' : '#1A2024'} 
+                  color={glass.text} 
                 />
               </View>
             </TouchableWithoutFeedback>
@@ -224,16 +205,16 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
             {/* Left Navigation Button */}
             <TouchableOpacity 
               onPress={goToPrevious}
-              style={tw`absolute left-4 z-10 p-4 rounded-full ${
-                currentSection === 0 
-                  ? (isDarkMode ? 'bg-dark-primary-6' : 'bg-primary-3') 
-                  : (isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-2')
-              } ${currentSection === 0 ? 'opacity-50' : 'opacity-100'}`}
+              style={[
+                tw`absolute left-4 z-10 p-4 rounded-full`,
+                glassSurface(glass, currentSection !== 0),
+                currentSection === 0 ? { opacity: 0.5 } : null,
+              ]}
               disabled={currentSection === 0}
             >
               <ChevronLeftIcon 
                 size={32} 
-                color={isDarkMode ? '#FDFDFD' : '#1A2024'} 
+                color={glass.text} 
               />
             </TouchableOpacity>
 
@@ -251,10 +232,11 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
             >
               <SelectableLyrics
                 text={currentLyricSection.content}
-                selectionColor="#EA9215"
+                selectionColor={glass.accent}
                 style={[
-                  tw`text-center font-nokia-bold leading-relaxed ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
+                  tw`text-center font-nokia-bold leading-relaxed`,
                   {
+                    color: glass.text,
                     fontSize: fontSize + (isLandscape ? 8 : 4),
                     lineHeight: (fontSize + (isLandscape ? 8 : 4)) * 1.55,
                     paddingTop: 18,
@@ -268,16 +250,16 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
             {/* Right Navigation Button */}
             <TouchableOpacity 
               onPress={goToNext}
-              style={tw`absolute right-4 z-10 p-4 rounded-full ${
-                currentSection === lyricSections.length - 1
-                  ? (isDarkMode ? 'bg-dark-primary-6' : 'bg-primary-3') 
-                  : (isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-2')
-              } ${currentSection === lyricSections.length - 1 ? 'opacity-50' : 'opacity-100'}`}
+              style={[
+                tw`absolute right-4 z-10 p-4 rounded-full`,
+                glassSurface(glass, currentSection !== lyricSections.length - 1),
+                currentSection === lyricSections.length - 1 ? { opacity: 0.5 } : null,
+              ]}
               disabled={currentSection === lyricSections.length - 1}
             >
               <ChevronRightIcon 
                 size={32} 
-                color={isDarkMode ? '#FDFDFD' : '#1A2024'} 
+                color={glass.text} 
               />
             </TouchableOpacity>
           </View>
@@ -287,16 +269,16 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
             {lyricSections.map((_, index) => (
               <View
                 key={index}
-                style={tw`w-2 h-2 rounded-full ${
-                  index === currentSection
-                    ? (isDarkMode ? 'bg-dark-accent-1' : 'bg-accent-1')
-                    : (isDarkMode ? 'bg-dark-primary-6' : 'bg-primary-4')
-                }`}
+                style={[
+                  tw`w-2 h-2 rounded-full`,
+                  { backgroundColor: index === currentSection ? glass.accent : glass.border },
+                ]}
               />
             ))}
           </View>
         </View>
       </SafeAreaView>
+      </GlassBackground>
 
       <FontSizePopup visible={isFontSizePopupVisible} onClose={handleCloseFontSizePopup} previewText={song.title} />
     </View>

@@ -2,6 +2,7 @@
 import { configureStore, createSlice, PayloadAction, ThunkAction, Action, createAsyncThunk } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import favoritesReducer from './store/favoritesSlice';
+import type { GlassPaletteId } from './components/glass/GlassBackground';
 
 interface FontSizeState {
   fontSize: number;
@@ -9,6 +10,7 @@ interface FontSizeState {
 
 interface ThemeState {
   isDarkMode: boolean;
+  glassPalette: GlassPaletteId;
 }
 
 const initialFontSizeState: FontSizeState = {
@@ -17,6 +19,7 @@ const initialFontSizeState: FontSizeState = {
 
 const initialThemeState: ThemeState = {
   isDarkMode: false,
+  glassPalette: 'graceMercy',
 };
 
 const fontSizeSlice = createSlice({
@@ -71,11 +74,17 @@ export const loadTheme = createAsyncThunk(
   'theme/loadTheme',
   async () => {
     try {
-      const savedTheme = await AsyncStorage.getItem('theme');
-      return savedTheme ? JSON.parse(savedTheme) : false;
+      const [savedTheme, savedPalette] = await Promise.all([
+        AsyncStorage.getItem('theme'),
+        AsyncStorage.getItem('glassPalette'),
+      ]);
+      return {
+        isDarkMode: savedTheme ? JSON.parse(savedTheme) : false,
+        glassPalette: (savedPalette as GlassPaletteId | null) ?? 'graceMercy',
+      };
     } catch (error) {
       console.error('Error loading theme:', error);
-      return false;
+      return initialThemeState;
     }
   }
 );
@@ -94,6 +103,19 @@ export const saveTheme = createAsyncThunk(
   }
 );
 
+export const saveGlassPalette = createAsyncThunk(
+  'theme/saveGlassPalette',
+  async (palette: GlassPaletteId) => {
+    try {
+      await AsyncStorage.setItem('glassPalette', palette);
+      return palette;
+    } catch (error) {
+      console.error('Error saving glass palette:', error);
+      throw error;
+    }
+  }
+);
+
 const themeSlice = createSlice({
   name: 'theme',
   initialState: initialThemeState,
@@ -104,20 +126,27 @@ const themeSlice = createSlice({
     setDarkMode(state, action: PayloadAction<boolean>) {
       state.isDarkMode = action.payload;
     },
+    setGlassPalette(state, action: PayloadAction<GlassPaletteId>) {
+      state.glassPalette = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
       .addCase(loadTheme.fulfilled, (state, action) => {
-        state.isDarkMode = action.payload;
+        state.isDarkMode = action.payload.isDarkMode;
+        state.glassPalette = action.payload.glassPalette;
       })
       .addCase(saveTheme.fulfilled, (state, action) => {
         state.isDarkMode = action.payload;
+      })
+      .addCase(saveGlassPalette.fulfilled, (state, action) => {
+        state.glassPalette = action.payload;
       });
   },
 });
 
 export const { setFontSize } = fontSizeSlice.actions;
-export const { toggleDarkMode, setDarkMode } = themeSlice.actions;
+export const { toggleDarkMode, setDarkMode, setGlassPalette } = themeSlice.actions;
 
 // Enhanced font size actions that automatically save to storage
 export const setFontSizeWithPersistence = (fontSize: number): AppThunk => async (dispatch) => {
@@ -137,6 +166,11 @@ export const toggleDarkModeWithPersistence = (): AppThunk => async (dispatch, ge
 export const setDarkModeWithPersistence = (isDarkMode: boolean): AppThunk => async (dispatch) => {
   dispatch(setDarkMode(isDarkMode));
   dispatch(saveTheme(isDarkMode));
+};
+
+export const setGlassPaletteWithPersistence = (palette: GlassPaletteId): AppThunk => async (dispatch) => {
+  dispatch(setGlassPalette(palette));
+  dispatch(saveGlassPalette(palette));
 };
 
 const store = configureStore({

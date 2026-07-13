@@ -11,7 +11,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider, useSelector, useDispatch } from 'react-redux';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar, Platform, Text, TextInput } from 'react-native';
 import store, { RootState, loadTheme, loadFontSize, AppDispatch } from './src/store';
 import { getNokiaFontName } from './src/utils/platformUtils';
@@ -23,9 +23,7 @@ import Settings from './src/components/Settings/Settings';
 import MusicPlayer from './src/components/YoutubeLink/YouTubeLinks';
 import FavoritesList from './src/components/Favorites/FavoritesList';
 import SplashScreen from './src/components/SplashScreen';
-import { BookOpenIcon, MusicalNoteIcon, PlayIcon, Cog6ToothIcon, HeartIcon } from 'react-native-heroicons/outline';
 import { syncService } from './src/services/syncService';
-import NetInfo from '@react-native-community/netinfo';
 import { HagerignaHymn } from './src/services/hymnalService';
 import Toast from 'react-native-toast-message';
 import FontDebug from './src/components/FontDebug';
@@ -33,6 +31,8 @@ import SystemNavigationBar from 'react-native-system-navigation-bar';
 import { notificationService } from './src/services/notificationService';
 import { navigationRef } from './src/navigation/navigationRef';
 import notifee, { EventType } from '@notifee/react-native';
+import { useGlassTheme } from './src/components/glass/GlassBackground';
+import GlassTabBar from './src/components/glass/GlassTabBar';
 
 // Force global default Nokia font for all Text and TextInput components
 const _defaultNokiaFont = getNokiaFontName('regular');
@@ -118,24 +118,6 @@ const Tab = createBottomTabNavigator();
 
 const MainTabs = () => {
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
-  const insets = useSafeAreaInsets();
-
-  // Memoize the tab bar style to prevent unnecessary re-renders
-  const tabBarStyle = React.useMemo(() => ({
-    backgroundColor: isDarkMode ? '#1A2024' : '#FDFDFD',
-    borderTopColor: isDarkMode ? '#374151' : '#E5E7EB',
-    height: 56 + insets.bottom,
-    paddingBottom: insets.bottom,
-    paddingTop: 7,
-    elevation: 0,
-    ...(Platform.OS === 'ios' && {
-      shadowOpacity: 0,
-    }),
-  }), [isDarkMode, insets.bottom]);
-
-  const tabBarInactiveTintColor = React.useMemo(() => 
-    isDarkMode ? '#9CA3AF' : '#6B7280', [isDarkMode]
-  );
 
   // Force re-render when theme changes
   const themeKey = isDarkMode ? 'dark' : 'light';
@@ -143,33 +125,10 @@ const MainTabs = () => {
   return (
       <Tab.Navigator 
         key={themeKey}
-        screenOptions={({ route }) => ({
+        tabBar={(props) => <GlassTabBar {...props} />}
+        screenOptions={{
           headerShown: false,
-          tabBarIcon: ({ color, size }) => {
-            let IconComponent;
-
-            if (route.name === 'Hymnals') {
-              IconComponent = BookOpenIcon;
-            } else if (route.name === 'Hagerigna') {
-              IconComponent = MusicalNoteIcon;
-          } else if (route.name === 'Favorites') {
-            IconComponent = HeartIcon;
-            } else if (route.name === 'Music') {
-              IconComponent = PlayIcon;
-            } else if (route.name === 'Settings') {
-              IconComponent = Cog6ToothIcon;
-            }
-
-            return IconComponent ? <IconComponent size={size} color={color} /> : null;
-          },
-          tabBarActiveTintColor: '#EA9215',
-          tabBarInactiveTintColor: tabBarInactiveTintColor,
-          tabBarStyle: tabBarStyle,
-          tabBarLabelStyle: {
-            fontFamily: getNokiaFontName('bold'),
-            fontSize: 12,
-          },
-        })}
+        }}
       >
         <Tab.Screen name="Hymnals" component={SongStack} />
         <Tab.Screen name="Hagerigna" component={HagerignaStack} />
@@ -182,6 +141,7 @@ const MainTabs = () => {
 
 const AppContent = () => {
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
+  const glass = useGlassTheme();
   const dispatch = useDispatch<AppDispatch>();
   const [showSplash, setShowSplash] = useState(true);
 
@@ -235,7 +195,7 @@ const AppContent = () => {
       return;
     }
 
-    const navColor = isDarkMode ? '#1A2024' : '#FDFDFD';
+    const navColor = glass.base;
     const barMode = isDarkMode ? 'light' : 'dark';
 
     SystemNavigationBar.setNavigationColor(navColor, barMode, 'navigation').catch(() => {
@@ -244,7 +204,7 @@ const AppContent = () => {
     SystemNavigationBar.setNavigationBarContrastEnforced(false).catch(() => {
       // Ignore when API level does not support it.
     });
-  }, [isDarkMode]);
+  }, [glass.base, isDarkMode]);
 
   const handleSplashFinish = () => {
     setShowSplash(false);
@@ -258,7 +218,7 @@ const AppContent = () => {
       <StatusBar 
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
         backgroundColor={Platform.select({
-          android: isDarkMode ? '#1A2024' : '#FDFDFD',
+          android: glass.base,
           ios: 'transparent'
         })}
         translucent={Platform.OS === 'android'}
@@ -278,12 +238,12 @@ const AppContent = () => {
           theme={{
             dark: isDarkMode,
             colors: {
-              primary: '#EA9215',
-              background: isDarkMode ? '#1A2024' : '#FDFDFD',
-              card: isDarkMode ? '#1A2024' : '#FDFDFD',
-              text: isDarkMode ? '#FDFDFD' : '#1A2024',
-              border: isDarkMode ? '#374151' : '#E5E7EB',
-              notification: '#EA9215',
+              primary: glass.accent,
+              background: glass.base,
+              card: glass.glass,
+              text: glass.text,
+              border: glass.border,
+              notification: glass.accent,
             },
             fonts: {
               regular: {

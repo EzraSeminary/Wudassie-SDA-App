@@ -40,8 +40,8 @@ export const getCardStyle = () => ({
 // Custom hook to get consistent tab bar height across all screens
 export const useTabBarHeight = () => {
   const insets = useSafeAreaInsets();
-  // Keep tab bar height deterministic across screens to avoid floating button drift.
-  const tabBarHeight = 56 + insets.bottom; // matches App.tsx tabBarStyle height
+  // Matches the custom floating glass tab bar: rail height + bottom inset/gap.
+  const tabBarHeight = 70 + Math.max(insets.bottom, 8);
 
   // Calculate the bottom position for floating buttons
   // Button should be positioned above the tab bar with some padding
@@ -64,27 +64,27 @@ export const useBottomContentPadding = (minExtra: number = 24) => {
 };
 
 // Shared layout values for screens with a floating action button.
-// The tab screen content area already ends at the top of the tab bar, so
-// "bottom" is relative to that. Use only the gap + button size for positioning.
+// The custom tab bar is absolutely positioned, so floating controls and list
+// padding must reserve the tab bar height explicitly.
 export const useFloatingButtonLayout = (
   buttonSize: number = 64,
   minExtraPadding: number = 24,
   buttonGapAboveTab: number = 20,
   listClearanceAboveButton: number = 12
 ) => {
+  const { tabBarHeight } = useTabBarHeight();
+
   return useMemo(() => {
-    // Distance from content bottom (top of tab bar) to the button's bottom edge.
-    const floatingButtonBottom = buttonGapAboveTab;
-    // List padding so last item clears the button.
+    const floatingButtonBottom = tabBarHeight + buttonGapAboveTab;
     const listBottomPadding = Math.max(
       minExtraPadding,
-      buttonGapAboveTab + buttonSize + listClearanceAboveButton
+      tabBarHeight + buttonGapAboveTab + buttonSize + listClearanceAboveButton
     );
     return {
       floatingButtonBottom,
       listBottomPadding,
     };
-  }, [buttonSize, minExtraPadding, buttonGapAboveTab, listClearanceAboveButton]);
+  }, [buttonSize, minExtraPadding, buttonGapAboveTab, listClearanceAboveButton, tabBarHeight]);
 };
 
 /**

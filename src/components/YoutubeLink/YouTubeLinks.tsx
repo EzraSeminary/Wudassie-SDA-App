@@ -11,20 +11,19 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useSelector } from 'react-redux';
 import NetInfo from '@react-native-community/netinfo';
-import { RootState } from '../../store';
 import {
   MusicalNoteIcon,
   PlayIcon,
 } from 'react-native-heroicons/outline';
-import { getCardStyle, useBottomContentPadding } from '../../utils/platformUtils';
+import { useBottomContentPadding } from '../../utils/platformUtils';
 import tw from '../../../tailwind';
 import YoutubePlayer from 'react-native-youtube-iframe';
 import { youtubeService, YouTubeLink } from '../../services/youtubeService';
+import { GlassBackground, GlassGradientBorder, glassSurface, useGlassTheme } from '../glass/GlassBackground';
 
 const MusicPlayer = () => {
-  const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
+  const glass = useGlassTheme();
   const insets = useSafeAreaInsets();
   const headerTopPadding = Platform.OS === 'android' ? Math.max(insets.top + 8, 18) : Math.max(insets.top + 8, 16);
   const contentBottomPadding = useBottomContentPadding(24);
@@ -142,21 +141,20 @@ const MusicPlayer = () => {
   }, [fetchLinks]);
 
   const dynamicStyles = {
-    container: tw`flex-1 ${isDarkMode ? 'bg-dark-primary-10' : 'bg-primary-1'}`,
     card: [
-      tw`rounded-2xl ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
-      getCardStyle(),
+      tw`rounded-3xl`,
+      glassSurface(glass, true),
     ],
-    title: tw`text-base font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`,
-    subtitle: tw`text-sm font-nokia-bold ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`,
-    meta: tw`text-xs font-nokia-bold ${isDarkMode ? 'text-primary-6' : 'text-secondary-6'}`,
+    title: [tw`text-base font-nokia-bold`, { color: glass.text }],
+    subtitle: [tw`text-sm font-nokia-bold`, { color: glass.mutedText }],
+    meta: [tw`text-xs font-nokia-bold`, { color: glass.mutedText }],
   };
 
   const renderPinnedTop = () => (
     <View style={[tw`px-5 pb-4`, { paddingTop: headerTopPadding }]}>
       <View style={tw`flex-row items-center mb-4`}>
-        <MusicalNoteIcon size={28} color="#EA9215" />
-        <Text style={tw`text-2xl font-nokia-bold ml-3 ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
+        <MusicalNoteIcon size={28} color={glass.accent} />
+        <Text style={[tw`text-2xl font-nokia-bold ml-3`, { color: glass.text }]}>
           Music Videos
         </Text>
       </View>
@@ -167,6 +165,7 @@ const MusicPlayer = () => {
         </View>
       ) : selectedLink ? (
         <View style={[dynamicStyles.card, tw`p-4`]}>
+          <GlassGradientBorder radius={24} />
           <Text style={[dynamicStyles.title, tw`mb-3`]} numberOfLines={2}>
             {selectedLink.title}
           </Text>
@@ -216,6 +215,7 @@ const MusicPlayer = () => {
         </View>
       ) : (
         <View style={[dynamicStyles.card, tw`p-6 items-center`]}>
+          <GlassGradientBorder radius={24} />
           <Text style={dynamicStyles.subtitle}>No videos yet.</Text>
         </View>
       )}
@@ -243,12 +243,13 @@ const MusicPlayer = () => {
           setSelectedId(item.id);
         }}
         style={[
-          tw`flex-row items-center mx-5 mb-3 p-3 rounded-2xl ${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-3'}`,
-          getCardStyle(),
-          isActive ? tw`border border-accent-6` : null,
+          tw`flex-row items-center mx-5 mb-3 p-3 rounded-2xl`,
+          glassSurface(glass, isActive),
+          isActive ? { borderWidth: 1, borderColor: glass.accent, shadowColor: glass.accent, shadowOpacity: 0.24 } : null,
         ]}
         activeOpacity={0.8}
       >
+        <GlassGradientBorder radius={16} />
         <View style={tw`relative`}>
           {item.thumbnailUrl ? (
             <Image
@@ -258,7 +259,7 @@ const MusicPlayer = () => {
             />
           ) : (
             <View style={tw`w-24 h-16 rounded-lg bg-gray-200 items-center justify-center`}>
-              <PlayIcon size={20} color="#EA9215" />
+              <PlayIcon size={20} color={glass.accent} />
             </View>
           )}
           {item.duration ? (
@@ -282,7 +283,7 @@ const MusicPlayer = () => {
   };
 
   return (
-    <View style={dynamicStyles.container}>
+    <GlassBackground>
       <SafeAreaView style={tw`flex-1`} edges={['left', 'right']}>
         {renderPinnedTop()}
         <FlatList
@@ -296,7 +297,7 @@ const MusicPlayer = () => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => fetchLinks(true)}
-              tintColor={tw.color('accent-6')}
+              tintColor={glass.accent}
             />
           }
           ListEmptyComponent={
@@ -308,7 +309,7 @@ const MusicPlayer = () => {
           }
         />
       </SafeAreaView>
-    </View>
+    </GlassBackground>
   );
 };
 
