@@ -60,7 +60,7 @@ const SongDetail = () => {
   });
   const subtitleMaxHeight = scrollY.interpolate({
     inputRange: [0, SCROLL_THRESHOLD * 0.6],
-    outputRange: [36, 0],
+    outputRange: [26, 0],
     extrapolate: 'clamp',
   });
   const trackBoxSize = scrollY.interpolate({
@@ -80,7 +80,7 @@ const SongDetail = () => {
   });
   const headerPaddingBottom = scrollY.interpolate({
     inputRange: [0, SCROLL_THRESHOLD],
-    outputRange: [16, 4],
+    outputRange: [10, 4],
     extrapolate: 'clamp',
   });
   const animTitleFontSize = scrollY.interpolate({
@@ -90,7 +90,7 @@ const SongDetail = () => {
   });
   const animTitleLineHeight = scrollY.interpolate({
     inputRange: [0, SCROLL_THRESHOLD],
-    outputRange: [Math.round((fontSize + 6) * 1.45), Math.round((fontSize + 1) * 1.3)],
+    outputRange: [Math.round((fontSize + 6) * 1.2), Math.round((fontSize + 1) * 1.18)],
     extrapolate: 'clamp',
   });
 
@@ -107,30 +107,22 @@ const SongDetail = () => {
   useEffect(() => {
     const fetchFullSongData = async () => {
       try {
-        const foundSong = await hymnalService.getSDAHymnByTitle(song.title);
+        const cachedSongs = allSongs.length > 0 ? allSongs : await hymnalService.getImmediateSDAHymns();
+        const foundSong = cachedSongs.find(
+          (item) => item.newHymnalTitle === song.title || item.title === song.title || item.oldHymnalTitle === song.title
+        ) ?? null;
         setFullSongData(foundSong);
       } catch (error) {
         console.error('Error fetching full song data:', error);
       }
     };
     fetchFullSongData();
-  }, [song.title]);
+  }, [allSongs, song.title]);
 
   useEffect(() => {
     const loadSongs = async () => {
       const immediateSongs = await hymnalService.getImmediateSDAHymns();
       setAllSongs(immediateSongs);
-
-      try {
-        const refreshedSongs = await hymnalService.getSDAHymnsFromApi();
-        if (refreshedSongs.length > 0) {
-          setAllSongs(refreshedSongs);
-        }
-      } catch (error) {
-        if (__DEV__) {
-          console.error('Failed to refresh SDA song list in background', error);
-        }
-      }
     };
 
     loadSongs();
@@ -223,9 +215,9 @@ const SongDetail = () => {
       getDefaultFontStyle('bold'),
       {
         color: glass.mutedText,
-        lineHeight: 22,
-        paddingTop: 2,
-        paddingBottom: 4,
+        lineHeight: 18,
+        paddingTop: 0,
+        paddingBottom: 0,
         includeFontPadding: true,
       },
     ],
@@ -235,14 +227,14 @@ const SongDetail = () => {
       {
         color: glass.text,
         fontSize,
-        lineHeight: Math.round(fontSize * 1.7),
-        paddingTop: 4,
-        paddingBottom: 10,
+        lineHeight: Math.round(fontSize * 1.42),
+        paddingTop: 0,
+        paddingBottom: 4,
         includeFontPadding: true,
         ...glassTextShadow(glass.isDarkMode),
       },
     ],
-    divider: [tw`h-px mt-3`, { backgroundColor: glass.border }],
+    divider: [tw`h-px mt-2`, { backgroundColor: glass.isDarkMode ? 'transparent' : glass.border }],
   };
 
   return (
@@ -257,9 +249,6 @@ const SongDetail = () => {
               </View>
             </TouchableWithoutFeedback>
             <View style={tw`flex-row items-center`}>
-              <TouchableOpacity onPress={handleOpenNumpad} style={tw`p-2`}>
-                <SolidHashtagIcon size={22} color={accentColor} />
-              </TouchableOpacity>
               <TouchableOpacity onPress={handleToggleFavorite} style={tw`p-2`}>
                 {isFavorite ? (
                   <SolidHeartIcon size={22} color={tw.color('red-500')} />
@@ -324,8 +313,8 @@ const SongDetail = () => {
                       color: glass.text,
                       fontSize: animTitleFontSize,
                       lineHeight: animTitleLineHeight,
-                      paddingTop: 4,
-                      paddingBottom: 4,
+                      paddingTop: 2,
+                      paddingBottom: 0,
                       includeFontPadding: true,
                     },
                   ]}
@@ -342,7 +331,7 @@ const SongDetail = () => {
                       overflow: 'hidden',
                     }}
                   >
-                    <View style={tw`flex-row items-center mt-1`}>
+                    <View style={tw`flex-row items-center mt-0.5`}>
                       <View style={tw`w-1 h-4 rounded-full bg-accent-6 mr-2`} />
                       <Text style={dynamicStyles.subtitle} numberOfLines={1}>
                         {song.englishTitle}

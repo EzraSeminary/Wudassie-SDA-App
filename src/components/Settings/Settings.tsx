@@ -6,7 +6,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, setFontSizeWithPersistence, toggleDarkModeWithPersistence, setGlassPaletteWithPersistence, AppDispatch } from '../../store';
 import { Cog6ToothIcon, MusicalNoteIcon, BookOpenIcon, HeartIcon, ArrowPathIcon } from 'react-native-heroicons/outline';
-import { hymnalService } from '../../services/hymnalService';
+import { hymnalService, type HagerignaHymn, type SDAHymn } from '../../services/hymnalService';
 import { syncService } from '../../services/syncService';
 import { notificationService } from '../../services/notificationService';
 import tw from '../../../tailwind';
@@ -23,6 +23,7 @@ const Settings = () => {
   const headerTopPadding = Platform.OS === 'android' ? Math.max(insets.top + 8, 18) : Math.max(insets.top + 8, 16);
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastSyncTimestamp, setLastSyncTimestamp] = useState<number | null>(null);
+  const [lastUpdatePreview, setLastUpdatePreview] = useState<UpdatePreview | null>(null);
   const [notificationTime, setNotificationTime] = useState<{ hour: number; minute: number; formatted: string } | null>(null);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [previewFontSize, setPreviewFontSize] = useState(fontSize);
@@ -51,7 +52,35 @@ const Settings = () => {
   const handleUpdateSongs = async () => {
     try {
       setIsUpdating(true);
-      await hymnalService.forceUpdate();
+      setLastUpdatePreview(null);
+      const [previousHagerigna, previousHymnal] = await Promise.all([
+        hymnalService.getImmediateHagerignaHymns(),
+        hymnalService.getImmediateSDAHymns(),
+      ]);
+      const updated = await hymnalService.forceUpdate();
+      if (__DEV__) {
+        console.log('[Update Now] fetched counts:', {
+          hagerigna: updated.hagerigna.length,
+          hymnal: updated.hymnal.length,
+        });
+        console.log('[Update Now] fetched JSON:', JSON.stringify(updated, null, 2));
+      }
+      setLastUpdatePreview({
+        hagerigna: buildCollectionUpdatePreview(
+          'Hagerigna',
+          previousHagerigna,
+          updated.hagerigna,
+          getHagerignaPreviewTitle,
+          getHagerignaComparableText,
+        ),
+        hymnal: buildCollectionUpdatePreview(
+          'Hymnal',
+          previousHymnal,
+          updated.hymnal,
+          getSdaPreviewTitle,
+          getSdaComparableText,
+        ),
+      });
       const latest = await syncService.getLastSyncTimestamp();
       setLastSyncTimestamp(latest);
       Alert.alert('Success', 'Songs updated successfully!');
@@ -65,7 +94,9 @@ const Settings = () => {
 
   const handleNotificationTimeChange = async (_: any, selectedDate?: Date) => {
     setShowTimePicker(false);
-    if (!selectedDate) return;
+    if (!selectedDate) {
+      return;
+    }
 
     const hour = selectedDate.getHours();
     const minute = selectedDate.getMinutes();
@@ -78,7 +109,9 @@ const Settings = () => {
   };
 
   const lastUpdatedLabel = useMemo(() => {
-    if (!lastSyncTimestamp) return 'Never updated';
+    if (!lastSyncTimestamp) {
+      return 'Never updated';
+    }
     const date = new Date(lastSyncTimestamp);
     return date.toLocaleString();
   }, [lastSyncTimestamp]);
@@ -159,8 +192,8 @@ const Settings = () => {
                     Switch between light and dark themes
                   </Text>
                 </View>
-                <Switch 
-                  value={isDarkMode} 
+                <Switch
+                  value={isDarkMode}
                   onValueChange={handleToggleTheme}
                   trackColor={{ false: '#CACACA', true: glass.accent }}
                   thumbColor={isDarkMode ? '#FDFDFD' : '#FDFDFD'}
@@ -217,8 +250,8 @@ const Settings = () => {
                 disabled={isUpdating}
                 style={[
                   tw`flex-row items-center justify-center p-4 rounded-2xl overflow-hidden`,
+                  glassSurface(glass),
                   { backgroundColor: isUpdating ? '#9CA3AF' : glass.accent },
-                  glassSurface(glass)
                 ]}
               >
                 {isUpdating ? (
@@ -230,6 +263,71 @@ const Settings = () => {
                   {isUpdating ? 'Updating...' : 'Update Now'}
                 </Text>
               </TouchableOpacity>
+              {lastUpdatePreview ? (
+                <View style={tw`mt-5`}>
+                  {[lastUpdatePreview.hagerigna, lastUpdatePreview.hymnal].map((preview) => {
+                    const hasVisibleChanges = preview.totalAdded > 0 || preview.totalChanged > 0;
+                    return (
+                      <View
+                        key={preview.label}
+                        style={[
+                          tw`p-4 rounded-2xl mb-3`,
+                          glassSurface(glass),
+                        ]}
+                      >
+                        <View style={tw`flex-row items-center justify-between mb-2`}>
+                          <Text style={[tw`font-nokia-bold text-base`, { color: glass.text }]}>
+                            {preview.label}
+                          </Text>
+                          <Text style={[tw`text-xs font-nokia-bold`, { color: glass.accent }]}>
+                            {preview.previousCount} {'->'} {preview.fetchedCount}
+                          </Text>
+                        </View>
+                        {hasVisibleChanges ? (
+                          <>
+                            {preview.added.length > 0 ? (
+                              <View style={tw`mb-2`}>
+                                <Text style={[tw`text-xs font-nokia-bold mb-1`, { color: glass.accent }]}>
+                                  Newly fetched ({preview.totalAdded})
+                                </Text>
+                                {preview.added.map((title, index) => (
+                                  <Text
+                                    key={`${preview.label}-added-${title}-${index}`}
+                                    numberOfLines={1}
+                                    style={[tw`text-sm mb-1`, { color: glass.text }]}
+                                  >
+                                    {index + 1}. {title}
+                                  </Text>
+                                ))}
+                              </View>
+                            ) : null}
+                            {preview.changed.length > 0 ? (
+                              <View>
+                                <Text style={[tw`text-xs font-nokia-bold mb-1`, { color: glass.accent }]}>
+                                  Updated from previous data ({preview.totalChanged})
+                                </Text>
+                                {preview.changed.map((title, index) => (
+                                  <Text
+                                    key={`${preview.label}-changed-${title}-${index}`}
+                                    numberOfLines={1}
+                                    style={[tw`text-sm mb-1`, { color: glass.text }]}
+                                  >
+                                    {index + 1}. {title}
+                                  </Text>
+                                ))}
+                              </View>
+                            ) : null}
+                          </>
+                        ) : (
+                          <Text style={[tw`text-sm`, { color: glass.mutedText }]}>
+                            Fetched data matches the songs already saved on this device.
+                          </Text>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : null}
             </View>
 
             {/* Daily Reminder Section */}
@@ -253,7 +351,7 @@ const Settings = () => {
                 </View>
                 <TouchableOpacity
                   onPress={() => setShowTimePicker(true)}
-                  style={[tw`px-4 py-2 rounded-2xl`, { backgroundColor: glass.accent }, glassSurface(glass)]}
+                  style={[tw`px-4 py-2 rounded-2xl`, glassSurface(glass), { backgroundColor: glass.accent }]}
                 >
                   <Text style={tw`text-white font-nokia-bold`}>Change</Text>
                 </TouchableOpacity>
@@ -313,3 +411,102 @@ const Settings = () => {
 };
 
 export default Settings;
+
+type CollectionUpdatePreview = {
+  label: string;
+  previousCount: number;
+  fetchedCount: number;
+  totalAdded: number;
+  totalChanged: number;
+  added: string[];
+  changed: string[];
+};
+
+type UpdatePreview = {
+  hagerigna: CollectionUpdatePreview;
+  hymnal: CollectionUpdatePreview;
+};
+
+const UPDATE_PREVIEW_LIMIT = 8;
+
+const normalizeComparableText = (value: string): string => value.trim().replace(/\s+/g, ' ');
+
+const buildCollectionUpdatePreview = <T extends { id?: string }>(
+  label: string,
+  previousItems: T[],
+  fetchedItems: T[],
+  getTitle: (item: T, index: number) => string,
+  getComparableText: (item: T) => string,
+): CollectionUpdatePreview => {
+  const previousById = new Map(previousItems.map((item) => [item.id, normalizeComparableText(getComparableText(item))]));
+  const previousTitles = new Set(previousItems.map((item, index) => normalizeComparableText(getTitle(item, index)).toLowerCase()));
+  const added: string[] = [];
+  const changed: string[] = [];
+  let totalAdded = 0;
+  let totalChanged = 0;
+
+  fetchedItems.forEach((item, index) => {
+    const title = getTitle(item, index);
+    const comparableText = normalizeComparableText(getComparableText(item));
+    const previousText = item.id ? previousById.get(item.id) : undefined;
+
+    if (item.id && previousText !== undefined) {
+      if (previousText !== comparableText) {
+        totalChanged += 1;
+        if (changed.length < UPDATE_PREVIEW_LIMIT) {
+          changed.push(title);
+        }
+      }
+      return;
+    }
+
+    const normalizedTitle = normalizeComparableText(title).toLowerCase();
+    if (!previousTitles.has(normalizedTitle)) {
+      totalAdded += 1;
+      if (added.length < UPDATE_PREVIEW_LIMIT) {
+        added.push(title);
+      }
+    }
+  });
+
+  return {
+    label,
+    previousCount: previousItems.length,
+    fetchedCount: fetchedItems.length,
+    totalAdded,
+    totalChanged,
+    added,
+    changed,
+  };
+};
+
+const getHagerignaPreviewTitle = (song: HagerignaHymn, index: number): string => (
+  song.title || song.artist || `Hagerigna song ${index + 1}`
+);
+
+const getHagerignaComparableText = (song: HagerignaHymn): string => [
+  song.title,
+  song.song,
+  song.artist,
+  song.album,
+  song.albumTitle,
+  song.albumName,
+  song.audio,
+  song.sheet_music?.join(','),
+].filter(Boolean).join('|');
+
+const getSdaPreviewTitle = (song: SDAHymn, index: number): string => (
+  song.newHymnalTitle || song.title || song.oldHymnalTitle || `Hymnal song ${song.number ?? index + 1}`
+);
+
+const getSdaComparableText = (song: SDAHymn): string => [
+  song.newHymnalTitle,
+  song.title,
+  song.oldHymnalTitle,
+  song.englishTitleOld,
+  song.newHymnalLyrics,
+  song.lyrics,
+  song.oldHymnalLyrics,
+  song.audio,
+  song.sheet_music?.join(','),
+].filter(Boolean).join('|');

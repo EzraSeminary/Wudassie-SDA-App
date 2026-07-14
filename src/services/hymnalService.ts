@@ -9,6 +9,14 @@ export interface HagerignaHymn {
   title: string;
   song: string;
   artist?: string;
+  choirName?: string;
+  trackNumber?: number;
+  album?: string;
+  albumTitle?: string;
+  albumName?: string;
+  albumId?: string;
+  isAlbum?: boolean;
+  tracks?: HagerignaHymn[];
   sheet_music?: string[];
   audio?: string;
   category?: string;
@@ -52,7 +60,7 @@ const normalizeSDAHymns = (items: SDAHymn[]): SDAHymn[] => {
       }
       return a.idOrder - b.idOrder;
     })
-    .map(({ originalIndex, idOrder, ...item }, index) => {
+    .map(({ originalIndex: _originalIndex, idOrder, ...item }, index) => {
       const resolvedNumber = Number.isFinite(idOrder) && idOrder !== Number.MAX_SAFE_INTEGER
         ? idOrder + 1
         : (item.number ?? index + 1);
@@ -65,11 +73,58 @@ const normalizeSDAHymns = (items: SDAHymn[]): SDAHymn[] => {
     });
 };
 
+const toBooleanFlag = (value: unknown): boolean => {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value === 1;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    return normalized === 'true' || normalized === '1' || normalized === 'yes';
+  }
+  return false;
+};
+
+const getNestedAlbumTracks = (item: HagerignaHymn): HagerignaHymn[] => {
+  const raw = item as HagerignaHymn & {
+    songs?: HagerignaHymn[];
+    items?: HagerignaHymn[];
+  };
+  return raw.tracks || raw.songs || raw.items || [];
+};
+
 const normalizeHagerignaHymns = (items: HagerignaHymn[]): HagerignaHymn[] => {
-  return items.map((item, index) => ({
-    ...item,
-    id: `hagerigna-${index + 1}`,
-  }));
+  return items.flatMap((item, index) => {
+    const raw = item as HagerignaHymn & { is_album?: unknown };
+    const nestedTracks = getNestedAlbumTracks(item);
+    const parentIsAlbum = toBooleanFlag(raw.isAlbum ?? raw.is_album) || nestedTracks.length > 0;
+
+    if (nestedTracks.length > 0) {
+      const albumId = item.albumId || item.id || `album-${index + 1}`;
+      const albumName = item.albumName || item.albumTitle || item.album || item.title || `Album ${index + 1}`;
+      const albumArtist = item.artist || item.choirName || '';
+
+      return nestedTracks.map((track, trackIndex) => ({
+        ...track,
+        id: track.id || `${albumId}-track-${trackIndex + 1}`,
+        title: track.title || `${albumName} ${trackIndex + 1}`,
+        song: track.song || '',
+        artist: track.artist || track.choirName || albumArtist,
+        albumId,
+        albumName,
+        albumTitle: item.albumTitle || albumName,
+        album: item.album || albumName,
+        category: track.category || item.category,
+        isAlbum: true,
+        trackNumber: track.trackNumber ?? trackIndex + 1,
+      }));
+    }
+
+    return {
+      ...item,
+      id: `hagerigna-${index + 1}`,
+      artist: item.artist || item.choirName,
+      isAlbum: parentIsAlbum,
+    };
+  });
 };
 
 const parseBundledSDAHymns = (): SDAHymn[] => {
@@ -122,7 +177,7 @@ function getOrderedArray<T>(payload: unknown): T[] {
   }
   if (payload && typeof payload === 'object') {
     const obj = payload as Record<string, unknown>;
-    const arr = obj.data ?? obj.items ?? obj.results ?? obj.hymns;
+    const arr = obj.data ?? obj.items ?? obj.results ?? obj.hymns ?? obj.songs;
     if (Array.isArray(arr)) {
       return arr;
     }
@@ -196,27 +251,35 @@ class HymnalService {
   }
 
   async forceUpdate(): Promise<{ hagerigna: HagerignaHymn[], hymnal: SDAHymn[] }> {
-    try {
-      if (__DEV__) {
-        console.log('Starting force update...');
-      }
-      const [hagerignaData, hymnalData] = await Promise.all([
-        this.getHagerignaHymns(),
-        this.getSDAHymns()
-      ]);
-
-      await AsyncStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
-
-      return {
-        hagerigna: hagerignaData,
-        hymnal: hymnalData
-      };
-    } catch (error) {
-      if (__DEV__) {
-        console.error('Error forcing update:', error);
-      }
-      throw error;
+    if (__DEV__) {
+      console.log('Starting force update...');
     }
+
+    const [hagerignaResult, hymnalResult] = await Promise.allSettled([
+      this.getHagerignaHymnsFromApi(),
+      this.getSDAHymnsFromApi(),
+    ]);
+
+    const hagerignaData = hagerignaResult.status === 'fulfilled'
+      ? hagerignaResult.value
+      : await this.getImmediateHagerignaHymns();
+    const hymnalData = hymnalResult.status === 'fulfilled'
+      ? hymnalResult.value
+      : await this.getImmediateSDAHymns();
+
+    if (hagerignaResult.status === 'rejected' && hymnalResult.status === 'rejected') {
+      if (__DEV__) {
+        console.error('Error forcing update:', hagerignaResult.reason, hymnalResult.reason);
+      }
+      throw new Error('Failed to update songs from the server.');
+    }
+
+    await AsyncStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
+
+    return {
+      hagerigna: hagerignaData,
+      hymnal: hymnalData,
+    };
   }
 
   async getLocalHagerignaHymns(): Promise<HagerignaHymn[] | null> {
@@ -317,4 +380,4 @@ class HymnalService {
   }
 }
 
-export const hymnalService = new HymnalService(); 
+export const hymnalService = new HymnalService();

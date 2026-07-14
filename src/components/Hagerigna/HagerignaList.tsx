@@ -30,10 +30,17 @@ import { GlassBackground, GlassGradientBorder, glassSurface, useGlassTheme } fro
 
 type SongListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'HagerignaList'>;
 
-type ViewMode = 'songs' | 'singers' | 'singerSongs';
+type ViewMode = 'songs' | 'singers' | 'singerSongs' | 'albums' | 'albumSongs';
 
 type SingerItem = {
   name: string;
+  count: number;
+};
+
+type AlbumItem = {
+  key: string;
+  title: string;
+  singer: string;
   count: number;
 };
 
@@ -52,6 +59,7 @@ const HagerignaList = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('songs');
   const [selectedSinger, setSelectedSinger] = useState<string | null>(null);
+  const [selectedAlbum, setSelectedAlbum] = useState<AlbumItem | null>(null);
   const [segmentWidth, setSegmentWidth] = useState(0);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
@@ -59,6 +67,16 @@ const HagerignaList = () => {
   const glass = useGlassTheme();
   const dispatch: AppDispatch = useDispatch();
   const { favoriteIds = [], isLoaded: favoritesLoaded = false } = useSelector((state: RootState) => state.favorites) || {};
+
+  const listPerformanceProps = Platform.OS === 'android'
+    ? {
+        removeClippedSubviews: true,
+        initialNumToRender: 8,
+        maxToRenderPerBatch: 6,
+        updateCellsBatchingPeriod: 50,
+        windowSize: 7,
+      }
+    : {};
 
   useEffect(() => {
     if (!favoritesLoaded) {
@@ -98,10 +116,34 @@ const HagerignaList = () => {
   }, []);
 
   const normalizedSongs = useMemo(() => {
-    return songs.map((song) => ({
-      ...song,
-      normalizedArtist: (song.artist || '').trim() || 'Unknown',
-    }));
+    return songs.map((song) => {
+      const isAlbum = Boolean(song.isAlbum);
+      const albumLabel = (
+        song.albumTitle ||
+        song.albumName ||
+        song.album ||
+        song.category ||
+        (isAlbum ? song.title : '') ||
+        ''
+      ).trim();
+      const albumKey = (
+        song.albumId ||
+        song.albumTitle ||
+        song.albumName ||
+        song.album ||
+        song.category ||
+        (isAlbum ? song.id || song.title : '') ||
+        ''
+      ).trim();
+
+      return {
+        ...song,
+        isAlbum,
+        normalizedArtist: (song.artist || '').trim() || 'Unknown',
+        normalizedAlbum: albumLabel,
+        normalizedAlbumKey: albumKey,
+      };
+    });
   }, [songs]);
 
   const songIndexById = useMemo(() => {
@@ -120,10 +162,41 @@ const HagerignaList = () => {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [normalizedSongs]);
 
+  const albums = useMemo<AlbumItem[]>(() => {
+    const grouped = new Map<string, AlbumItem>();
+    // Only songs marked with isAlbum go into the Albums section
+    normalizedSongs.forEach((song) => {
+      if (!song.isAlbum) return;
+      if (!song.normalizedAlbum || !song.normalizedAlbumKey) return;
+      const key = song.normalizedAlbumKey;
+      const existing = grouped.get(key);
+      if (existing) {
+        existing.count += 1;
+        if (existing.singer === 'Unknown' && song.normalizedArtist !== 'Unknown') {
+          existing.singer = song.normalizedArtist;
+        }
+        return;
+      }
+      grouped.set(key, {
+        key,
+        title: song.normalizedAlbum,
+        singer: song.normalizedArtist,
+        count: 1,
+      });
+    });
+
+    return Array.from(grouped.values())
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }, [normalizedSongs]);
+
   const filteredSongs = useMemo(() => {
     let list = normalizedSongs;
     if (viewMode === 'singerSongs' && selectedSinger) {
       list = list.filter((song) => song.normalizedArtist === selectedSinger);
+    } else if (viewMode === 'albumSongs' && selectedAlbum) {
+      list = list
+        .filter((song) => song.isAlbum && song.normalizedAlbumKey === selectedAlbum.key)
+        .sort((a, b) => (a.trackNumber ?? 0) - (b.trackNumber ?? 0));
     }
 
     const query = searchQuery.trim().toLowerCase();
@@ -135,13 +208,22 @@ const HagerignaList = () => {
       song.id.toString().includes(query) ||
       (song.song || '').toLowerCase().includes(query)
     );
-  }, [normalizedSongs, viewMode, selectedSinger, searchQuery]);
+  }, [normalizedSongs, viewMode, selectedSinger, selectedAlbum, searchQuery]);
 
   const filteredSingers = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return singers;
     return singers.filter((singer) => singer.name.toLowerCase().includes(query));
   }, [singers, searchQuery]);
+
+  const filteredAlbums = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return albums;
+    return albums.filter((album) =>
+      album.title.toLowerCase().includes(query) ||
+      album.singer.toLowerCase().includes(query)
+    );
+  }, [albums, searchQuery]);
 
   const handleOpenNumpad = () => setNumpadVisible(true);
   const handleCloseNumpad = () => setNumpadVisible(false);
@@ -172,7 +254,16 @@ const HagerignaList = () => {
 
   const handleSelectSinger = (singer: string) => {
     setSelectedSinger(singer);
+    setSelectedAlbum(null);
     setViewMode('singerSongs');
+    setSearchQuery('');
+    setSearchVisible(false);
+  };
+
+  const handleSelectAlbum = (album: AlbumItem) => {
+    setSelectedAlbum(album);
+    setSelectedSinger(null);
+    setViewMode('albumSongs');
     setSearchQuery('');
     setSearchVisible(false);
   };
@@ -180,24 +271,36 @@ const HagerignaList = () => {
   const handleBackToSingers = () => {
     setViewMode('singers');
     setSelectedSinger(null);
+    setSelectedAlbum(null);
     setSearchQuery('');
   };
 
-  const isSingersActive = viewMode === 'singers' || viewMode === 'singerSongs';
+  const handleBackToAlbums = () => {
+    setViewMode('albums');
+    setSelectedAlbum(null);
+    setSearchQuery('');
+  };
+
+  const activeSegmentIndex = viewMode === 'singers' || viewMode === 'singerSongs'
+    ? 1
+    : viewMode === 'albums' || viewMode === 'albumSongs'
+      ? 2
+      : 0;
+
   useEffect(() => {
     if (segmentWidth <= 0) return;
     Animated.spring(slideAnim, {
-      toValue: isSingersActive ? 1 : 0,
+      toValue: activeSegmentIndex,
       useNativeDriver: true,
       friction: 8,
       tension: 120,
     }).start();
-  }, [isSingersActive, segmentWidth, slideAnim]);
+  }, [activeSegmentIndex, segmentWidth, slideAnim]);
 
   const segmentPadding = 6;
   const onSegmentLayout = (e: LayoutChangeEvent) => {
     const { width } = e.nativeEvent.layout;
-    const w = (width - segmentPadding * 2) / 2;
+    const w = (width - segmentPadding * 2) / 3;
     if (w > 0) setSegmentWidth(w);
   };
 
@@ -215,7 +318,7 @@ const HagerignaList = () => {
     artistName: [tw`font-nokia-bold`, { color: glass.mutedText }],
     sectionTitle: [tw`text-lg font-nokia-bold`, { color: glass.text }],
     segmentTrack: [tw`flex-row rounded-full overflow-hidden`, glassSurface(glass, true)],
-    segmentButton: tw`flex-1 py-3 items-center justify-center`,
+    segmentButton: [tw`flex-1 py-3 items-center justify-center`, { zIndex: 1 }],
     segmentText: [tw`text-center font-nokia-bold`, { color: glass.text }],
     segmentTextActive: tw`text-center font-nokia-bold text-white`,
   };
@@ -263,14 +366,28 @@ const HagerignaList = () => {
     </TouchableOpacity>
   );
 
+  const renderAlbumItem = ({ item }: { item: AlbumItem }) => (
+    <TouchableOpacity onPress={() => handleSelectAlbum(item)} style={dynamicStyles.singerItem}>
+      <GlassGradientBorder radius={16} />
+      <View style={tw`flex-1`}>
+        <Text style={dynamicStyles.songTitle} numberOfLines={1}>
+          {item.title}
+        </Text>
+        <Text style={[dynamicStyles.artistName, tw`mt-1`]} numberOfLines={1}>
+          {item.singer} - {item.count} {item.count === 1 ? 'song' : 'songs'}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+
   const renderToggleButtons = () => {
     const slideTranslate = slideAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0, segmentWidth],
+      inputRange: [0, 1, 2],
+      outputRange: [0, segmentWidth, segmentWidth * 2],
     });
     return (
-      <View style={tw`px-4 pb-2`} onLayout={onSegmentLayout}>
-        <View style={[dynamicStyles.segmentTrack, { padding: segmentPadding }]}>
+      <View style={tw`px-4 pb-2`}>
+        <View style={[dynamicStyles.segmentTrack, { padding: segmentPadding }]} onLayout={onSegmentLayout}>
           <Animated.View
             style={[
               tw`absolute rounded-full`,
@@ -289,6 +406,7 @@ const HagerignaList = () => {
             onPress={() => {
               setViewMode('songs');
               setSelectedSinger(null);
+              setSelectedAlbum(null);
               setSearchQuery('');
             }}
           >
@@ -301,11 +419,25 @@ const HagerignaList = () => {
             onPress={() => {
               setViewMode('singers');
               setSelectedSinger(null);
+              setSelectedAlbum(null);
               setSearchQuery('');
             }}
           >
             <Text style={viewMode === 'singers' || viewMode === 'singerSongs' ? dynamicStyles.segmentTextActive : dynamicStyles.segmentText}>
               Singers
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={dynamicStyles.segmentButton}
+            onPress={() => {
+              setViewMode('albums');
+              setSelectedSinger(null);
+              setSelectedAlbum(null);
+              setSearchQuery('');
+            }}
+          >
+            <Text style={viewMode === 'albums' || viewMode === 'albumSongs' ? dynamicStyles.segmentTextActive : dynamicStyles.segmentText}>
+              Albums
             </Text>
           </TouchableOpacity>
         </View>
@@ -315,8 +447,12 @@ const HagerignaList = () => {
 
   const searchPlaceholder = viewMode === 'singers'
     ? 'Search singers...'
+    : viewMode === 'albums'
+      ? 'Search albums or singers...'
     : viewMode === 'singerSongs'
       ? 'Search titles or lyrics...'
+      : viewMode === 'albumSongs'
+        ? 'Search album songs...'
       : 'Search titles, artist or lyrics...';
 
   return (
@@ -367,6 +503,7 @@ const HagerignaList = () => {
             <View style={tw`p-8 items-center`}><Text style={tw`text-lg font-nokia-bold text-center text-red-500`}>{error}</Text></View>
           ) : viewMode === 'singers' ? (
             <FlatList
+              {...listPerformanceProps}
               data={filteredSingers}
               keyExtractor={(item) => item.name}
               renderItem={renderSingerItem}
@@ -380,8 +517,25 @@ const HagerignaList = () => {
                 </View>
               }
             />
+          ) : viewMode === 'albums' ? (
+            <FlatList
+              {...listPerformanceProps}
+              data={filteredAlbums}
+              keyExtractor={(item) => item.key}
+              renderItem={renderAlbumItem}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: listBottomPadding }}
+              ListEmptyComponent={
+                <View style={tw`p-8 items-center`}>
+                  <Text style={[tw`text-lg font-nokia-bold text-center`, { color: glass.mutedText }]}>
+                    No albums found.
+                  </Text>
+                </View>
+              }
+            />
           ) : (
             <FlatList
+              {...listPerformanceProps}
               data={filteredSongs}
               keyExtractor={(item) => item.id}
               renderItem={renderSongItem}
@@ -399,6 +553,19 @@ const HagerignaList = () => {
                       {selectedSinger}
                     </Text>
                   </View>
+                ) : viewMode === 'albumSongs' && selectedAlbum ? (
+                  <View style={tw`px-5 pb-3`}>
+                    <TouchableOpacity onPress={handleBackToAlbums} style={tw`flex-row items-center mb-2`}>
+                      <ChevronLeftIcon size={20} color={glass.text} />
+                      <Text style={[dynamicStyles.sectionTitle, tw`ml-1`]}>Back to albums</Text>
+                    </TouchableOpacity>
+                    <Text style={dynamicStyles.sectionTitle} numberOfLines={2}>
+                      {selectedAlbum.title}
+                    </Text>
+                    <Text style={[dynamicStyles.artistName, tw`mt-1`]} numberOfLines={1}>
+                      {selectedAlbum.singer}
+                    </Text>
+                  </View>
                 ) : null
               }
               ListEmptyComponent={
@@ -414,7 +581,7 @@ const HagerignaList = () => {
       </SafeAreaView>
 
       {/* Floating Circular Numpad Button */}
-      {viewMode !== 'singers' ? (
+      {viewMode !== 'singers' && viewMode !== 'albums' ? (
         <TouchableOpacity
           onPress={handleOpenNumpad}
           style={[

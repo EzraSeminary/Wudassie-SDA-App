@@ -1,11 +1,11 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { useSelector } from 'react-redux';
+import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
+import { BlurView } from '@react-native-community/blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { RootState } from '../store';
 import tw from '../../tailwind';
 import { XMarkIcon } from 'react-native-heroicons/outline';
+import { glassSurface, useGlassTheme } from './glass/GlassBackground';
 
 interface NumpadModalProps {
   visible: boolean;
@@ -15,20 +15,20 @@ interface NumpadModalProps {
   title: string;
 }
 
-const NumpadModal: React.FC<NumpadModalProps> = ({ 
-  visible, 
-  onClose, 
-  onJumpToSong, 
-  maxSongs, 
-  title 
+const NumpadModal: React.FC<NumpadModalProps> = ({
+  visible,
+  onClose,
+  onJumpToSong,
+  maxSongs,
+  title,
 }) => {
   const [inputValue, setInputValue] = useState('');
-  const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
+  const glass = useGlassTheme();
   const insets = useSafeAreaInsets();
   const bottomSheetRef = useRef<BottomSheet>(null);
-  
+
   // Snap points for the bottom sheet
-  const snapPoints = useMemo(() => ['70%'], []);
+  const snapPoints = useMemo(() => ['76%'], []);
 
   // Open/close bottom sheet based on visible prop
   useEffect(() => {
@@ -83,11 +83,37 @@ const NumpadModal: React.FC<NumpadModalProps> = ({
         {...props}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
-        opacity={0.5}
+        opacity={glass.isDarkMode ? 0.64 : 0.42}
         pressBehavior="close"
       />
     ),
-    []
+    [glass.isDarkMode]
+  );
+
+  const renderBackground = useCallback(
+    (props: any) => (
+      <View
+        pointerEvents="none"
+        style={[
+          props.style,
+          styles.sheetBackground,
+          {
+            backgroundColor: glass.glass,
+            borderColor: glass.border,
+          },
+        ]}
+      >
+        <BlurView
+          pointerEvents="none"
+          blurType={glass.isDarkMode ? 'dark' : 'light'}
+          blurAmount={24}
+          overlayColor={glass.strongGlass}
+          reducedTransparencyFallbackColor={glass.strongGlass}
+          style={styles.sheetBlur}
+        />
+      </View>
+    ),
+    [glass.border, glass.glass, glass.isDarkMode, glass.strongGlass],
   );
 
   const isValidNumber = () => {
@@ -103,29 +129,38 @@ const NumpadModal: React.FC<NumpadModalProps> = ({
       onChange={handleSheetChanges}
       enablePanDownToClose={true}
       backdropComponent={renderBackdrop}
-      backgroundStyle={tw`${isDarkMode ? 'bg-dark-primary-8' : 'bg-primary-1'}`}
-      handleIndicatorStyle={tw`w-12 h-1.5 rounded-full ${isDarkMode ? 'bg-dark-primary-6' : 'bg-primary-6'}`}
+      backgroundComponent={renderBackground}
+      handleIndicatorStyle={[styles.handleIndicator, { backgroundColor: glass.border }]}
       bottomInset={0}
     >
-      <BottomSheetView style={tw`flex-1 px-5`}>
+      <BottomSheetView style={[
+        tw`flex-1 px-5`,
+        styles.content,
+        { paddingBottom: Math.max(insets.bottom, 8) + 88 },
+      ]}>
         {/* Header */}
         <View style={tw`flex-row justify-between items-center mb-4 px-1`}>
-          <Text style={tw`text-xl font-nokia-bold ${isDarkMode ? 'text-dark-secondary-1' : 'text-secondary-10'}`}>
+          <Text style={[tw`text-xl font-nokia-bold`, { color: glass.text }]}>
             Jump to {title}
           </Text>
           <TouchableOpacity onPress={handleClose} style={tw`p-2`} activeOpacity={0.7}>
-            <XMarkIcon size={24} color={isDarkMode ? '#FDFDFD' : '#1A2024'} />
+            <XMarkIcon size={24} color={glass.text} />
           </TouchableOpacity>
         </View>
 
         {/* Display */}
-        <View style={tw`h-20 rounded-xl mb-4 justify-center items-center border-2 ${isDarkMode ? 'bg-dark-primary-10 border-dark-primary-6' : 'bg-primary-3 border-primary-6'}`}>
-          <Text style={tw`text-4xl font-nokia-bold ${isDarkMode ? 'text-white' : 'text-black'}`}>
+        <View style={[
+          tw`h-20 rounded-xl mb-4 justify-center items-center`,
+          styles.display,
+          glassSurface(glass),
+          { borderColor: glass.border },
+        ]}>
+          <Text style={[tw`text-4xl font-nokia-bold`, { color: glass.text }]}>
             {inputValue || '0'}
           </Text>
         </View>
 
-        <Text style={tw`text-sm font-nokia-bold text-center mt-2 ${isDarkMode ? 'text-primary-7' : 'text-primary-10'}`}>
+        <Text style={[tw`text-sm font-nokia-bold text-center mt-2`, { color: glass.mutedText }]}>
           Enter number (1 - {maxSongs})
         </Text>
 
@@ -136,22 +171,22 @@ const NumpadModal: React.FC<NumpadModalProps> = ({
         )}
 
         {/* Keypad */}
-        <View style={tw`mt-3`}>
+        <View style={[tw`mt-4`, styles.keypad]}>
           {/* Row 1 */}
           <View style={tw`flex-row gap-2 mb-2.5`}>
             <TouchableOpacity onPress={() => handleNumberPress('1')} activeOpacity={0.7} style={tw`flex-1`}>
-              <View style={tw`h-16 p-4 rounded-xl justify-center items-center ${isDarkMode ? 'bg-dark-primary-6' : 'bg-primary-6'}`}>
-                <Text style={tw`text-3xl font-nokia-bold ${isDarkMode ? 'text-white' : 'text-black'}`}>1</Text>
+              <View style={[tw`h-14 p-3 rounded-xl justify-center items-center`, glassSurface(glass)]}>
+                <Text style={[tw`text-3xl font-nokia-bold`, { color: glass.text }]}>1</Text>
               </View>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => handleNumberPress('2')} activeOpacity={0.7} style={tw`flex-1`}>
-              <View style={tw`h-16 p-4 rounded-xl justify-center items-center ${isDarkMode ? 'bg-dark-primary-6' : 'bg-primary-6'}`}>
-                <Text style={tw`text-3xl font-nokia-bold ${isDarkMode ? 'text-white' : 'text-black'}`}>2</Text>
+              <View style={[tw`h-14 p-3 rounded-xl justify-center items-center`, glassSurface(glass)]}>
+                <Text style={[tw`text-3xl font-nokia-bold`, { color: glass.text }]}>2</Text>
               </View>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => handleNumberPress('3')} activeOpacity={0.7} style={tw`flex-1`}>
-              <View style={tw`h-16 p-4 rounded-xl justify-center items-center ${isDarkMode ? 'bg-dark-primary-6' : 'bg-primary-6'}`}>
-                <Text style={tw`text-3xl font-nokia-bold ${isDarkMode ? 'text-white' : 'text-black'}`}>3</Text>
+              <View style={[tw`h-14 p-3 rounded-xl justify-center items-center`, glassSurface(glass)]}>
+                <Text style={[tw`text-3xl font-nokia-bold`, { color: glass.text }]}>3</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -159,18 +194,18 @@ const NumpadModal: React.FC<NumpadModalProps> = ({
           {/* Row 2 */}
           <View style={tw`flex-row gap-2 mb-2.5`}>
             <TouchableOpacity onPress={() => handleNumberPress('4')} activeOpacity={0.7} style={tw`flex-1`}>
-              <View style={tw`h-16 p-4 rounded-xl justify-center items-center ${isDarkMode ? 'bg-dark-primary-6' : 'bg-primary-6'}`}>
-                <Text style={tw`text-3xl font-nokia-bold ${isDarkMode ? 'text-white' : 'text-black'}`}>4</Text>
+              <View style={[tw`h-14 p-3 rounded-xl justify-center items-center`, glassSurface(glass)]}>
+                <Text style={[tw`text-3xl font-nokia-bold`, { color: glass.text }]}>4</Text>
               </View>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => handleNumberPress('5')} activeOpacity={0.7} style={tw`flex-1`}>
-              <View style={tw`h-16 p-4 rounded-xl justify-center items-center ${isDarkMode ? 'bg-dark-primary-6' : 'bg-primary-6'}`}>
-                <Text style={tw`text-3xl font-nokia-bold ${isDarkMode ? 'text-white' : 'text-black'}`}>5</Text>
+              <View style={[tw`h-14 p-3 rounded-xl justify-center items-center`, glassSurface(glass)]}>
+                <Text style={[tw`text-3xl font-nokia-bold`, { color: glass.text }]}>5</Text>
               </View>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => handleNumberPress('6')} activeOpacity={0.7} style={tw`flex-1`}>
-              <View style={tw`h-16 p-4 rounded-xl justify-center items-center ${isDarkMode ? 'bg-dark-primary-6' : 'bg-primary-6'}`}>
-                <Text style={tw`text-3xl font-nokia-bold ${isDarkMode ? 'text-white' : 'text-black'}`}>6</Text>
+              <View style={[tw`h-14 p-3 rounded-xl justify-center items-center`, glassSurface(glass)]}>
+                <Text style={[tw`text-3xl font-nokia-bold`, { color: glass.text }]}>6</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -178,18 +213,18 @@ const NumpadModal: React.FC<NumpadModalProps> = ({
           {/* Row 3 */}
           <View style={tw`flex-row gap-2 mb-2.5`}>
             <TouchableOpacity onPress={() => handleNumberPress('7')} activeOpacity={0.7} style={tw`flex-1`}>
-              <View style={tw`h-16 p-4 rounded-xl justify-center items-center ${isDarkMode ? 'bg-dark-primary-6' : 'bg-primary-6'}`}>
-                <Text style={tw`text-3xl font-nokia-bold ${isDarkMode ? 'text-white' : 'text-black'}`}>7</Text>
+              <View style={[tw`h-14 p-3 rounded-xl justify-center items-center`, glassSurface(glass)]}>
+                <Text style={[tw`text-3xl font-nokia-bold`, { color: glass.text }]}>7</Text>
               </View>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => handleNumberPress('8')} activeOpacity={0.7} style={tw`flex-1`}>
-              <View style={tw`h-16 p-4 rounded-xl justify-center items-center ${isDarkMode ? 'bg-dark-primary-6' : 'bg-primary-6'}`}>
-                <Text style={tw`text-3xl font-nokia-bold ${isDarkMode ? 'text-white' : 'text-black'}`}>8</Text>
+              <View style={[tw`h-14 p-3 rounded-xl justify-center items-center`, glassSurface(glass)]}>
+                <Text style={[tw`text-3xl font-nokia-bold`, { color: glass.text }]}>8</Text>
               </View>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => handleNumberPress('9')} activeOpacity={0.7} style={tw`flex-1`}>
-              <View style={tw`h-16 p-4 rounded-xl justify-center items-center ${isDarkMode ? 'bg-dark-primary-6' : 'bg-primary-6'}`}>
-                <Text style={tw`text-3xl font-nokia-bold ${isDarkMode ? 'text-white' : 'text-black'}`}>9</Text>
+              <View style={[tw`h-14 p-3 rounded-xl justify-center items-center`, glassSurface(glass)]}>
+                <Text style={[tw`text-3xl font-nokia-bold`, { color: glass.text }]}>9</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -197,40 +232,73 @@ const NumpadModal: React.FC<NumpadModalProps> = ({
           {/* Row 4 */}
           <View style={tw`flex-row gap-2 mb-2.5`}>
             <TouchableOpacity onPress={handleClear} activeOpacity={0.7} style={tw`flex-1`}>
-              <View style={tw`h-16 p-4 rounded-xl justify-center items-center bg-accent-6`}>
+              <View style={[tw`h-14 p-3 rounded-xl justify-center items-center`, { backgroundColor: glass.accent }]}>
                 <Text style={tw`text-base font-nokia-bold text-white`}>Clear</Text>
               </View>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => handleNumberPress('0')} activeOpacity={0.7} style={tw`flex-1`}>
-              <View style={tw`h-16 p-4 rounded-xl justify-center items-center ${isDarkMode ? 'bg-dark-primary-6' : 'bg-primary-6'}`}>
-                <Text style={tw`text-3xl font-nokia-bold ${isDarkMode ? 'text-white' : 'text-black'}`}>0</Text>
+              <View style={[tw`h-14 p-3 rounded-xl justify-center items-center`, glassSurface(glass)]}>
+                <Text style={[tw`text-3xl font-nokia-bold`, { color: glass.text }]}>0</Text>
               </View>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleBackspace} activeOpacity={0.7} style={tw`flex-1`}>
-              <View style={tw`h-16 p-4 rounded-xl justify-center items-center bg-accent-6`}>
+              <View style={[tw`h-14 p-3 rounded-xl justify-center items-center`, { backgroundColor: glass.accent }]}>
                 <Text style={tw`text-3xl font-nokia-bold text-white`}>⌫</Text>
               </View>
             </TouchableOpacity>
           </View>
 
           {/* Go Button */}
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={handleGo}
             disabled={!isValidNumber()}
             activeOpacity={0.8}
           >
-            <View style={tw`w-full h-16 rounded-xl justify-center items-center mt-4 ${isValidNumber() ? 'bg-accent-6' : 'bg-gray-400'}`}>
+            <View style={[
+              tw`w-full h-14 rounded-xl justify-center items-center mt-3`,
+              !isValidNumber() ? styles.disabledGoButton : null,
+              { backgroundColor: isValidNumber() ? glass.accent : glass.mutedText },
+            ]}>
               <Text style={tw`text-xl font-nokia-bold text-white`}>
                 GO
               </Text>
             </View>
           </TouchableOpacity>
         </View>
-        
+
         {/* no extra spacer here — BottomSheet bottomInset is set to 0 so sheet sits flush */}
       </BottomSheetView>
     </BottomSheet>
   );
 };
 
-export default NumpadModal; 
+const styles = StyleSheet.create({
+  sheetBackground: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+  },
+  content: {
+    paddingTop: 10,
+  },
+  sheetBlur: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  handleIndicator: {
+    width: 48,
+    height: 5,
+    borderRadius: 999,
+  },
+  display: {
+    borderWidth: 1,
+  },
+  disabledGoButton: {
+    opacity: 0.5,
+  },
+  keypad: {
+    marginTop: 'auto',
+  },
+});
+
+export default NumpadModal;

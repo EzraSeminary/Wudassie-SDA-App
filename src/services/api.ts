@@ -1,17 +1,17 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 
-const BASE_URL = 'https://wudassie-database.onrender.com/api';
+const BASE_URL = 'https://wudassie-sda-web.onrender.com/api';
 
 const api = axios.create({
   baseURL: BASE_URL,
-  // Render cold starts can exceed 10s; use a safer default timeout.
-  timeout: 30000,
+  // Render cold starts can be slow; allow enough time before treating it as offline.
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'Platform': Platform.OS
-  }
+    'Platform': Platform.OS,
+  },
 });
 
 // Add request interceptor
@@ -22,18 +22,17 @@ api.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Add response interceptor
 api.interceptors.response.use(
   (response) => {
-    if (__DEV__) {
-      console.log('Response:', response.data);
-    }
     return response;
   },
-  (error) => {
+  async (error) => {
     if (__DEV__) {
       if (error.response) {
         // The request was made and the server responded with a status code
@@ -48,8 +47,15 @@ api.interceptors.response.use(
         console.error('Error:', error.message);
       }
     }
+    const config = error.config;
+    const canRetry = config && !config.__retryCount && (!error.response || error.code === 'ECONNABORTED');
+    if (canRetry) {
+      config.__retryCount = 1;
+      await delay(1200);
+      return api(config);
+    }
     return Promise.reject(error);
-  }
+  },
 );
 
-export default api; 
+export default api;

@@ -63,7 +63,7 @@ const HagerignaDetail = () => {
   });
   const subtitleMaxHeight = scrollY.interpolate({
     inputRange: [0, SCROLL_THRESHOLD * 0.6],
-    outputRange: [36, 0],
+    outputRange: [26, 0],
     extrapolate: 'clamp',
   });
   const trackBoxSize = scrollY.interpolate({
@@ -83,7 +83,7 @@ const HagerignaDetail = () => {
   });
   const headerPaddingBottom = scrollY.interpolate({
     inputRange: [0, SCROLL_THRESHOLD],
-    outputRange: [16, 4],
+    outputRange: [10, 4],
     extrapolate: 'clamp',
   });
   const animTitleFontSize = scrollY.interpolate({
@@ -93,7 +93,7 @@ const HagerignaDetail = () => {
   });
   const animTitleLineHeight = scrollY.interpolate({
     inputRange: [0, SCROLL_THRESHOLD],
-    outputRange: [Math.round((fontSize + 6) * 1.45), Math.round((fontSize + 1) * 1.3)],
+    outputRange: [Math.round((fontSize + 6) * 1.2), Math.round((fontSize + 1) * 1.18)],
     extrapolate: 'clamp',
   });
 
@@ -125,17 +125,6 @@ const HagerignaDetail = () => {
     const loadSongs = async () => {
       const immediateSongs = await hymnalService.getImmediateHagerignaHymns();
       setAllSongs(immediateSongs);
-
-      try {
-        const refreshedSongs = await hymnalService.getHagerignaHymnsFromApi();
-        if (refreshedSongs.length > 0) {
-          setAllSongs(refreshedSongs);
-        }
-      } catch (error) {
-        if (__DEV__) {
-          console.error('Failed to refresh Hagerigna song list in background', error);
-        }
-      }
     };
 
     loadSongs();
@@ -144,12 +133,12 @@ const HagerignaDetail = () => {
   useEffect(() => {
     const fetchFullSongData = async () => {
       try {
-        const allSongs = await hymnalService.getHagerignaHymns();
-        const foundSong = allSongs.find((s: HagerignaHymn) => s.id === song.id);
+        const cachedSongs = allSongs.length > 0 ? allSongs : await hymnalService.getImmediateHagerignaHymns();
+        const foundSong = cachedSongs.find((s: HagerignaHymn) => s.id === song.id);
         if (foundSong) {
           setFullSongData(foundSong);
         } else {
-          const foundByTitle = allSongs.find((s: HagerignaHymn) => s.title === song.title);
+          const foundByTitle = cachedSongs.find((s: HagerignaHymn) => s.title === song.title);
           if (foundByTitle) {
             setFullSongData(foundByTitle);
           }
@@ -161,7 +150,7 @@ const HagerignaDetail = () => {
     if (song.id) {
       fetchFullSongData();
     }
-  }, [song.id, song.title]);
+  }, [allSongs, song.id, song.title]);
 
   useEffect(() => {
     if (!isFullScreen) {
@@ -240,9 +229,9 @@ const HagerignaDetail = () => {
       getDefaultFontStyle('bold'),
       {
         color: glass.mutedText,
-        lineHeight: 22,
-        paddingTop: 2,
-        paddingBottom: 4,
+        lineHeight: 18,
+        paddingTop: 0,
+        paddingBottom: 0,
         includeFontPadding: true,
       },
     ],
@@ -252,14 +241,14 @@ const HagerignaDetail = () => {
       {
         color: glass.text,
         fontSize,
-        lineHeight: Math.round(fontSize * 1.7),
-        paddingTop: 4,
-        paddingBottom: 10,
+        lineHeight: Math.round(fontSize * 1.42),
+        paddingTop: 0,
+        paddingBottom: 4,
         includeFontPadding: true,
         ...glassTextShadow(glass.isDarkMode),
       },
     ],
-    divider: [tw`h-px mt-3`, { backgroundColor: glass.border }],
+    divider: [tw`h-px mt-2`, { backgroundColor: glass.isDarkMode ? 'transparent' : glass.border }],
   };
 
   if (!song) {
@@ -282,9 +271,6 @@ const HagerignaDetail = () => {
               </View>
             </TouchableWithoutFeedback>
             <View style={tw`flex-row items-center`}>
-              <TouchableOpacity onPress={handleOpenNumpad} style={tw`p-2`}>
-                <SolidHashtagIcon size={22} color={accentColor} />
-              </TouchableOpacity>
               <TouchableOpacity onPress={handleToggleFavorite} style={tw`p-2`}>
                 {favoriteIds.includes(song.id) ? (
                   <SolidHeartIcon size={22} color={tw.color('red-500')} />
@@ -349,8 +335,8 @@ const HagerignaDetail = () => {
                       color: glass.text,
                       fontSize: animTitleFontSize,
                       lineHeight: animTitleLineHeight,
-                      paddingTop: 4,
-                      paddingBottom: 4,
+                      paddingTop: 2,
+                      paddingBottom: 0,
                       includeFontPadding: true,
                     },
                   ]}
@@ -367,7 +353,7 @@ const HagerignaDetail = () => {
                       overflow: 'hidden',
                     }}
                   >
-                    <View style={tw`flex-row items-center mt-1`}>
+                    <View style={tw`flex-row items-center mt-0.5`}>
                       <View style={tw`w-1 h-4 rounded-full bg-accent-6 mr-2`} />
                       <Text style={dynamicStyles.artist} numberOfLines={1}>
                         {song.artist}

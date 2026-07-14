@@ -1,5 +1,5 @@
 import React from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import {
   BookOpenIcon,
@@ -8,6 +8,8 @@ import {
   MusicalNoteIcon,
   PlayIcon,
 } from 'react-native-heroicons/outline';
+import { BlurView } from '@react-native-community/blur';
+import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getNokiaFontName } from '../../utils/platformUtils';
 import { GlassGradientBorder, glassSurface, useGlassTheme } from './GlassBackground';
@@ -15,6 +17,20 @@ import { GlassGradientBorder, glassSurface, useGlassTheme } from './GlassBackgro
 const BAR_SIDE_MARGIN = 16;
 const BAR_PADDING = 7;
 const BAR_HEIGHT = 70;
+
+const getBottomFadeOpacity = (isDarkMode: boolean) => {
+  if (Platform.OS === 'android') {
+    return {
+      bottom: isDarkMode ? 0.88 : 0.82,
+      middle: isDarkMode ? 0.7 : 0.64,
+    };
+  }
+
+  return {
+    bottom: isDarkMode ? 0.76 : 0.58,
+    middle: isDarkMode ? 0.54 : 0.38,
+  };
+};
 
 const iconForRoute = (name: string) => {
   if (name === 'Hymnals') {
@@ -48,6 +64,8 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const focusedDescriptor = descriptors[state.routes[state.index]?.key];
   const tabBarStyle = StyleSheet.flatten(focusedDescriptor?.options.tabBarStyle);
   const shouldHide = (tabBarStyle as { display?: string } | undefined)?.display === 'none';
+  const bottomFadeOpacity = getBottomFadeOpacity(glass.isDarkMode);
+  const bottomFadeColor = glass.isDarkMode ? glass.base : glass.horizon;
 
   if (shouldHide) {
     return null;
@@ -56,8 +74,27 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 8) }]}>
       <View
+        pointerEvents="none"
+        style={[
+          styles.bottomFade,
+          { height: BAR_HEIGHT + Math.max(insets.bottom, 8) + 48 },
+        ]}
+      >
+        <Svg width="100%" height="100%" preserveAspectRatio="none">
+          <Defs>
+            <SvgLinearGradient id="tab-bottom-fade" x1="0" y1="1" x2="0" y2="0">
+              <Stop offset="0" stopColor={bottomFadeColor} stopOpacity={bottomFadeOpacity.bottom} />
+              <Stop offset="0.58" stopColor={bottomFadeColor} stopOpacity={bottomFadeOpacity.middle} />
+              <Stop offset="1" stopColor={bottomFadeColor} stopOpacity="0" />
+            </SvgLinearGradient>
+          </Defs>
+          <Rect x="0" y="0" width="100%" height="100%" fill="url(#tab-bottom-fade)" />
+        </Svg>
+      </View>
+      <View
         style={[
           styles.bar,
+          styles.barBorder,
           glassSurface(glass, true),
           {
             marginHorizontal: BAR_SIDE_MARGIN,
@@ -65,6 +102,16 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
           },
         ]}
       >
+        {Platform.OS === 'android' ? (
+          <BlurView
+            pointerEvents="none"
+            blurType={glass.isDarkMode ? 'dark' : 'light'}
+            blurAmount={18}
+            overlayColor={glass.strongGlass}
+            reducedTransparencyFallbackColor={glass.strongGlass}
+            style={styles.androidBlur}
+          />
+        ) : null}
         <GlassGradientBorder radius={34} />
         <View style={styles.items}>
           {state.routes.map((route, index) => {
@@ -138,11 +185,24 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
   },
+  bottomFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
   bar: {
     height: BAR_HEIGHT,
     borderRadius: 34,
     padding: BAR_PADDING,
     overflow: 'hidden',
+  },
+  barBorder: {
+    borderColor: 'rgba(255, 250, 236, 0.72)',
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  androidBlur: {
+    ...StyleSheet.absoluteFillObject,
   },
   items: {
     flex: 1,

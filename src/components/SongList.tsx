@@ -40,6 +40,15 @@ const SongList = () => {
   const dispatch: AppDispatch = useDispatch();
   const { favoriteIds = [], isLoaded: favoritesLoaded = false } = useSelector((state: RootState) => state.favorites) || {};
   const [songs, setSongs] = useState<Song[]>([]);
+  const listPerformanceProps = Platform.OS === 'android'
+    ? {
+        removeClippedSubviews: true,
+        initialNumToRender: 8,
+        maxToRenderPerBatch: 6,
+        updateCellsBatchingPeriod: 50,
+        windowSize: 7,
+      }
+    : {};
 
   useEffect(() => {
     if (!favoritesLoaded) {
@@ -128,12 +137,12 @@ const SongList = () => {
     const songNumber = originalIndex + 1;
     const songId = item.id;
     const isFavorite = favoriteIds.includes(songId);
-    
+
     return (
       <TouchableOpacity onPress={() => handleSelect(item, index)} style={[
         tw`flex-row items-center rounded-2xl mt-2 mx-4 p-4`,
         glassSurface(glass, songNumber % 7 === 0),
-        songNumber % 7 === 0 ? { shadowColor: glass.accent, shadowOpacity: 0.24 } : null,
+        songNumber % 7 === 0 && Platform.OS !== 'android' ? { shadowColor: glass.accent, shadowOpacity: 0.24 } : null,
       ]} activeOpacity={0.82}>
         <GlassGradientBorder radius={16} />
         <Text style={[tw`text-2xl font-nokia-bold mr-4 min-w-[35px]`, { color: glass.accent }]}>
@@ -202,13 +211,13 @@ const SongList = () => {
           )}
 
           <FlatList
+            {...listPerformanceProps}
             data={filteredSongs}
             keyExtractor={(item) => item.id}
             renderItem={renderSongItem}
             showsVerticalScrollIndicator={false}
             scrollEnabled={true}
             bounces={true}
-            removeClippedSubviews={true}
             contentContainerStyle={[{ paddingBottom: listBottomPadding }]}
             keyboardShouldPersistTaps="handled"
             ListEmptyComponent={

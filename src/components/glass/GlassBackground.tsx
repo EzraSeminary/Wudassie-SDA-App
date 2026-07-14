@@ -162,6 +162,10 @@ export const GlassBackground = ({ children, style }: GlassBackgroundProps) => {
   const drift = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (Platform.OS === 'android') {
+      return undefined;
+    }
+
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(drift, {
@@ -223,12 +227,12 @@ export const GlassBackground = ({ children, style }: GlassBackgroundProps) => {
 export const glassSurface = (glass: ReturnType<typeof useGlassTheme>, strong = false): ViewStyle => ({
   backgroundColor: strong ? glass.strongGlass : glass.glass,
   borderColor: 'transparent',
-  borderWidth: StyleSheet.hairlineWidth,
+  borderWidth: 0,
   shadowColor: glass.isDarkMode ? '#050403' : '#8B6B2C',
   shadowOffset: { width: 0, height: 10 },
-  shadowOpacity: glass.isDarkMode ? 0.24 : 0.14,
-  shadowRadius: 20,
-  elevation: 8,
+  shadowOpacity: Platform.OS === 'android' ? 0 : (glass.isDarkMode ? 0.18 : 0.12),
+  shadowRadius: Platform.OS === 'android' ? 0 : 18,
+  elevation: Platform.OS === 'android' ? 0 : 8,
 });
 
 type GlassGradientBorderProps = {
@@ -246,19 +250,21 @@ export const GlassGradientBorder = ({ radius, opacity = 1 }: GlassGradientBorder
     }
   };
 
+  if (Platform.OS === 'android') {
+    return null;
+  }
+
   return (
-    <View pointerEvents="none" style={styles.borderMeasure} onLayout={onLayout}>
+    <View pointerEvents="none" style={[styles.borderMeasure, { borderRadius: radius }]} onLayout={onLayout}>
       <BlurView
         pointerEvents="none"
         blurType={glass.isDarkMode ? 'dark' : 'light'}
-        blurAmount={Platform.OS === 'ios' ? 18 : 14}
-        blurRadius={Platform.OS === 'android' ? 14 : undefined}
-        downsampleFactor={Platform.OS === 'android' ? 8 : undefined}
+        blurAmount={glass.isDarkMode ? 10 : 14}
         overlayColor="transparent"
         reducedTransparencyFallbackColor={glass.strongGlass}
         style={[styles.blurFill, { borderRadius: radius }]}
       />
-      {size.width > 2 && size.height > 2 ? (
+      {!glass.isDarkMode && size.width > 2 && size.height > 2 ? (
         <Svg width={size.width} height={size.height}>
           <Defs>
             <LinearGradient id="glass-border" x1="0" y1="0" x2={size.width} y2="0">
@@ -285,9 +291,9 @@ export const GlassGradientBorder = ({ radius, opacity = 1 }: GlassGradientBorder
 };
 
 export const glassTextShadow = (isDarkMode: boolean) => ({
-  textShadowColor: isDarkMode ? 'rgba(0, 0, 0, 0.45)' : 'rgba(255, 255, 255, 0.75)',
+  textShadowColor: isDarkMode ? 'transparent' : 'rgba(255, 255, 255, 0.55)',
   textShadowOffset: { width: 0, height: 1 },
-  textShadowRadius: 3,
+  textShadowRadius: isDarkMode ? 0 : 2,
 });
 
 const styles = StyleSheet.create({
@@ -332,6 +338,7 @@ const styles = StyleSheet.create({
   },
   borderMeasure: {
     ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
   },
   blurFill: {
     ...StyleSheet.absoluteFillObject,
