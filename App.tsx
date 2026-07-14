@@ -12,7 +12,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider, useSelector, useDispatch } from 'react-redux';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StatusBar, Platform, Text, TextInput } from 'react-native';
+import { AppState, StatusBar, Platform, Text, TextInput } from 'react-native';
 import store, { RootState, loadTheme, loadFontSize, AppDispatch } from './src/store';
 import { getNokiaFontName } from './src/utils/platformUtils';
 import SongList from './src/components/SongList';
@@ -115,6 +115,28 @@ const FavoritesStack = () => (
 );
 
 const Tab = createBottomTabNavigator();
+let startupSyncPromise: Promise<void> | null = null;
+
+const syncSongsOnOpen = async () => {
+  if (startupSyncPromise) {
+    return startupSyncPromise;
+  }
+
+  startupSyncPromise = syncService.checkForUpdates({ respectSyncInterval: false })
+    .then((songsUpdated) => {
+      if (songsUpdated) {
+        Toast.show({
+          type: 'success',
+          text1: 'Songs updated',
+        });
+      }
+    })
+    .finally(() => {
+      startupSyncPromise = null;
+    });
+
+  return startupSyncPromise;
+};
 
 const MainTabs = () => {
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
@@ -149,9 +171,9 @@ const AppContent = () => {
     // Load saved theme when app starts
     dispatch(loadTheme());
     dispatch(loadFontSize());
-    
-    // Check for updates when app starts
-    syncService.checkForUpdates();
+
+    // Check for updates when app starts.
+    syncSongsOnOpen();
 
     // Ensure daily reminder is scheduled
     notificationService.ensureDailyReminder().catch(() => {
@@ -181,6 +203,22 @@ const AppContent = () => {
       unsubscribe();
     };
   }, [dispatch]);
+
+  useEffect(() => {
+    let previousState = AppState.currentState;
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      const wasInBackground = previousState === 'background' || previousState === 'inactive';
+      previousState = nextState;
+
+      if (wasInBackground && nextState === 'active') {
+        syncSongsOnOpen();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   // Log theme changes for debugging
   useEffect(() => {

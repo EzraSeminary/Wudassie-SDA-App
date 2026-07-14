@@ -1,6 +1,6 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {FlatList, Text, View, TextInput, TouchableWithoutFeedback, TouchableOpacity, Platform} from 'react-native';
-import {useNavigation} from '@react-navigation/native';
+import {useFocusEffect, useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {useSelector, useDispatch} from 'react-redux';
@@ -24,6 +24,20 @@ type Song = {
 };
 
 type SongListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SongList'>;
+
+const mapApiSongs = (items: SDAHymn[]): Song[] => {
+  return items.map((item, index) => {
+    const resolvedNumber = item.number ?? index + 1;
+    const title = item.newHymnalTitle || item.title || item.oldHymnalTitle || `Song ${resolvedNumber}`;
+    const lyrics = item.newHymnalLyrics || item.lyrics || item.oldHymnalLyrics || '';
+    return {
+      id: item.id || `hymnal-${resolvedNumber}`,
+      title,
+      englishTitle: item.englishTitleOld || '',
+      lyrics,
+    };
+  });
+};
 
 const SongList = () => {
   const { floatingButtonBottom, listBottomPadding } = useFloatingButtonLayout();
@@ -57,20 +71,6 @@ const SongList = () => {
   }, [dispatch, favoritesLoaded]);
 
   useEffect(() => {
-    const mapApiSongs = (items: SDAHymn[]): Song[] => {
-      return items.map((item, index) => {
-        const resolvedNumber = item.number ?? index + 1;
-        const title = item.newHymnalTitle || item.title || item.oldHymnalTitle || `Song ${resolvedNumber}`;
-        const lyrics = item.newHymnalLyrics || item.lyrics || item.oldHymnalLyrics || '';
-        return {
-          id: item.id || `hymnal-${resolvedNumber}`,
-          title,
-          englishTitle: item.englishTitleOld || '',
-          lyrics,
-        };
-      });
-    };
-
     const loadSongs = async () => {
       const immediateSongs = await hymnalService.getImmediateSDAHymns();
       setSongs(mapApiSongs(immediateSongs));
@@ -89,6 +89,31 @@ const SongList = () => {
 
     loadSongs();
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      let isActive = true;
+
+      const reloadCachedSongs = async () => {
+        try {
+          const cachedSongs = await hymnalService.getImmediateSDAHymns();
+          if (isActive && cachedSongs.length > 0) {
+            setSongs(mapApiSongs(cachedSongs));
+          }
+        } catch (e) {
+          if (__DEV__) {
+            console.error('Failed to reload cached SDA hymns on focus', e);
+          }
+        }
+      };
+
+      reloadCachedSongs();
+
+      return () => {
+        isActive = false;
+      };
+    }, []),
+  );
 
   const handleOpenNumpad = () => setNumpadVisible(true);
   const handleCloseNumpad = () => setNumpadVisible(false);

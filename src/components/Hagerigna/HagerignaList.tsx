@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   Text,
@@ -10,8 +10,9 @@ import {
   Platform,
   Animated,
   LayoutChangeEvent,
+  PanResponder,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useFloatingButtonLayout } from '../../utils/platformUtils';
 import { useSelector, useDispatch } from 'react-redux';
@@ -114,6 +115,31 @@ const HagerignaList = () => {
 
     loadSongs();
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      let isActive = true;
+
+      const reloadCachedSongs = async () => {
+        try {
+          const cachedSongs = await hymnalService.getImmediateHagerignaHymns();
+          if (isActive && cachedSongs.length > 0) {
+            setSongs(cachedSongs);
+          }
+        } catch (e) {
+          if (__DEV__) {
+            console.error('Failed to reload cached Hagerigna hymns on focus', e);
+          }
+        }
+      };
+
+      reloadCachedSongs();
+
+      return () => {
+        isActive = false;
+      };
+    }, []),
+  );
 
   const normalizedSongs = useMemo(() => {
     return songs.map((song) => {
@@ -241,7 +267,10 @@ const HagerignaList = () => {
   };
 
   const handleJumpToSong = (songNumber: number) => {
-    const song = normalizedSongs[songNumber - 1];
+    const jumpList = viewMode === 'albumSongs' || viewMode === 'singerSongs'
+      ? filteredSongs
+      : normalizedSongs;
+    const song = jumpList[songNumber - 1];
     if (song) {
       handleSelect(song);
     }
@@ -281,11 +310,47 @@ const HagerignaList = () => {
     setSearchQuery('');
   };
 
+  const selectSegment = useCallback((index: number) => {
+    if (index === 0) {
+      setViewMode('songs');
+      setSelectedSinger(null);
+      setSelectedAlbum(null);
+      setSearchQuery('');
+      return;
+    }
+
+    if (index === 1) {
+      setViewMode('singers');
+      setSelectedSinger(null);
+      setSelectedAlbum(null);
+      setSearchQuery('');
+      return;
+    }
+
+    setViewMode('albums');
+    setSelectedSinger(null);
+    setSelectedAlbum(null);
+    setSearchQuery('');
+  }, []);
+
   const activeSegmentIndex = viewMode === 'singers' || viewMode === 'singerSongs'
     ? 1
     : viewMode === 'albums' || viewMode === 'albumSongs'
       ? 2
       : 0;
+
+  const swipeResponder = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gesture) => {
+      return Math.abs(gesture.dx) > 40 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.4;
+    },
+    onPanResponderRelease: (_, gesture) => {
+      if (gesture.dx < -55 && activeSegmentIndex < 2) {
+        selectSegment(activeSegmentIndex + 1);
+      } else if (gesture.dx > 55 && activeSegmentIndex > 0) {
+        selectSegment(activeSegmentIndex - 1);
+      }
+    },
+  }), [activeSegmentIndex, selectSegment]);
 
   useEffect(() => {
     if (segmentWidth <= 0) return;
@@ -323,15 +388,16 @@ const HagerignaList = () => {
     segmentTextActive: tw`text-center font-nokia-bold text-white`,
   };
 
-  const renderSongItem = ({ item }: { item: HagerignaHymn }) => {
+  const renderSongItem = ({ item, index }: { item: HagerignaHymn; index: number }) => {
     const isFavorite = favoriteIds.includes(item.id);
     const songIndex = songIndexById.get(item.id) ?? 0;
+    const displayNumber = viewMode === 'albumSongs' ? index + 1 : songIndex + 1;
 
     return (
       <TouchableOpacity onPress={() => handleSelect(item)} style={dynamicStyles.songItem}>
         <GlassGradientBorder radius={16} />
         <Text style={[dynamicStyles.songNumber, tw`ml font-nokia-bold`]}>
-          {songIndex + 1}
+          {displayNumber}
         </Text>
         <View style={tw`ml-3 flex-1`}>
           <Text style={[dynamicStyles.songTitle, tw`font-nokia-bold`]} numberOfLines={2}>
@@ -403,12 +469,7 @@ const HagerignaList = () => {
           />
           <TouchableOpacity
             style={dynamicStyles.segmentButton}
-            onPress={() => {
-              setViewMode('songs');
-              setSelectedSinger(null);
-              setSelectedAlbum(null);
-              setSearchQuery('');
-            }}
+            onPress={() => selectSegment(0)}
           >
             <Text style={viewMode === 'songs' ? dynamicStyles.segmentTextActive : dynamicStyles.segmentText}>
               Songs
@@ -416,12 +477,7 @@ const HagerignaList = () => {
           </TouchableOpacity>
           <TouchableOpacity
             style={dynamicStyles.segmentButton}
-            onPress={() => {
-              setViewMode('singers');
-              setSelectedSinger(null);
-              setSelectedAlbum(null);
-              setSearchQuery('');
-            }}
+            onPress={() => selectSegment(1)}
           >
             <Text style={viewMode === 'singers' || viewMode === 'singerSongs' ? dynamicStyles.segmentTextActive : dynamicStyles.segmentText}>
               Singers
@@ -429,12 +485,7 @@ const HagerignaList = () => {
           </TouchableOpacity>
           <TouchableOpacity
             style={dynamicStyles.segmentButton}
-            onPress={() => {
-              setViewMode('albums');
-              setSelectedSinger(null);
-              setSelectedAlbum(null);
-              setSearchQuery('');
-            }}
+            onPress={() => selectSegment(2)}
           >
             <Text style={viewMode === 'albums' || viewMode === 'albumSongs' ? dynamicStyles.segmentTextActive : dynamicStyles.segmentText}>
               Albums
@@ -479,7 +530,7 @@ const HagerignaList = () => {
         {renderToggleButtons()}
 
         {/* Content */}
-        <View style={tw`flex-1`}>
+        <View style={tw`flex-1`} {...swipeResponder.panHandlers}>
           {isSearchVisible && (
             <View style={tw`px-5 pb-4`}>
               <TextInput
@@ -606,7 +657,7 @@ const HagerignaList = () => {
         visible={isNumpadVisible}
         onClose={handleCloseNumpad}
         onJumpToSong={handleJumpToSong}
-        maxSongs={songs.length}
+        maxSongs={viewMode === 'albumSongs' || viewMode === 'singerSongs' ? filteredSongs.length : songs.length}
         title="Hagerigna"
       />
     </GlassBackground>

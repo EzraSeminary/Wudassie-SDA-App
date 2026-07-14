@@ -397,10 +397,13 @@ const Settings = () => {
             {/* Version and Credits Section */}
             <View style={tw`items-center mb-6 mt-2`}>
               <Text style={[tw`text-sm opacity-60`, { color: glass.mutedText }]}>
-                Version 0.0.1
+                Version 1.1
               </Text>
               <Text style={[tw`text-sm opacity-60 mt-2`, { color: glass.mutedText }]}>
                 Prepared by Yetnbit-Kal Ministry
+              </Text>
+              <Text style={[tw`text-sm opacity-60 mt-2`, { color: glass.mutedText }]}>
+                Developed by Amen Devs
               </Text>
             </View>
           </View>

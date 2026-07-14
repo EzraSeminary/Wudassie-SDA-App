@@ -72,6 +72,17 @@ def enableProguardInReleaseBuilds = false
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+/**
+ * Build one APK per CPU architecture instead of a single universal APK.
+ *
+ * React Native bundles large native libraries for each ABI. A universal APK is
+ * convenient, but it is much larger than the APK a physical phone actually
+ * needs. For sideloading to most modern phones, use the arm64-v8a release APK.
+ */
+def enableSeparateBuildsForEachCPUArchitecture = true
+def wudassieVersionCode = 8
+def abiVersionCodes = ["armeabi-v7a": 1, "arm64-v8a": 2, "x86": 3, "x86_64": 4]
+
 def wudassieUploadStorePath = project.findProperty('WUDASSIE_UPLOAD_STORE_FILE')
 def wudassieUploadKeystore = wudassieUploadStorePath ? file(wudassieUploadStorePath) : null
 def useWudassieReleaseSigning =
@@ -95,8 +106,16 @@ android {
         applicationId "com.wudassieapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 7
-        versionName "1.0.1"
+        versionCode wudassieVersionCode
+        versionName "1.1"
+    }
+    splits {
+        abi {
+            reset()
+            enable enableSeparateBuildsForEachCPUArchitecture
+            universalApk false
+            include "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
+        }
     }
     signingConfigs {
         debug {
@@ -126,6 +145,15 @@ android {
     }
 }
 
+android.applicationVariants.configureEach { variant ->
+    variant.outputs.each { output ->
+        def abi = output.getFilter(com.android.build.OutputFile.ABI)
+        if (abi != null) {
+            output.versionCodeOverride = wudassieVersionCode * 1000 + abiVersionCodes.get(abi)
+        }
+    }
+}
+
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
@@ -139,8 +167,3 @@ dependencies {
 
 // Apply the vector icons plugin
 apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
-
-/**
- * Set this to true to create four separate APKs instead of one,
- */
-def enableSeparateBuildsForEachCPUArchitecture = false

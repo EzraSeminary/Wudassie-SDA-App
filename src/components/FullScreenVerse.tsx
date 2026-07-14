@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableWithoutFeedback, 
-  Dimensions, 
+import {
+  View,
+  Text,
+  TouchableWithoutFeedback,
+  Dimensions,
   BackHandler,
   StatusBar,
   TouchableOpacity,
   ScrollView,
+  Platform,
+  PanResponder,
 } from 'react-native';
 import { useSelector } from 'react-redux';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +18,8 @@ import { RootState } from '../store';
 import tw from '../../tailwind';
 import { useNavigation } from '@react-navigation/native';
 import KeepAwake from 'react-native-keep-awake';
+import Orientation from 'react-native-orientation-locker';
+import SystemNavigationBar from 'react-native-system-navigation-bar';
 import FontSizePopup from './CustomBottomSheet';
 import SelectableLyrics from './SelectableLyrics';
 import { GlassBackground, glassSurface, useGlassTheme } from './glass/GlassBackground';
@@ -37,6 +41,11 @@ interface LyricSection {
   content: string;
 }
 
+type ParentNavigator = {
+  setOptions: (options: { tabBarStyle: { display: 'none' | 'flex' } }) => void;
+  getParent?: () => ParentNavigator | undefined;
+};
+
 const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onClose }) => {
   const fontSize = useSelector((state: RootState) => state.fontSize.fontSize);
   const glass = useGlassTheme();
@@ -45,56 +54,104 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
   const [lyricSections, setLyricSections] = useState<LyricSection[]>([]);
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [isFontSizePopupVisible, setIsFontSizePopupVisible] = useState(false);
+  const currentSectionRef = React.useRef(0);
+  const lyricSectionsRef = React.useRef<LyricSection[]>([]);
+
+  useEffect(() => {
+    currentSectionRef.current = currentSection;
+  }, [currentSection]);
+
+  useEffect(() => {
+    lyricSectionsRef.current = lyricSections;
+  }, [lyricSections]);
 
   // This effect handles showing/hiding the tab bar and status bar
   useEffect(() => {
-    const parentNav = navigation.getParent();
+    const parentNavigators: ParentNavigator[] = [];
+    let parentNav = navigation.getParent() as ParentNavigator | undefined;
+    while (parentNav) {
+      parentNavigators.push(parentNav);
+      parentNav = parentNav.getParent?.();
+    }
+
     if (isVisible) {
       // Hide the tab bar
-      parentNav?.setOptions({
+      parentNavigators.forEach((parent) => parent?.setOptions({
         tabBarStyle: { display: 'none' },
-      });
+      }));
     } else {
       // Restore the tab bar
-      parentNav?.setOptions({
+      parentNavigators.forEach((parent) => parent?.setOptions({
         tabBarStyle: { display: 'flex' },
-      });
+      }));
     }
   }, [isVisible, navigation]);
 
+  useEffect(() => {
+    if (!isVisible) {
+      return undefined;
+    }
+
+    Orientation.lockToLandscape();
+    StatusBar.setHidden(true, 'fade');
+
+    if (Platform.OS === 'android') {
+      SystemNavigationBar.fullScreen(true).catch(() => {});
+      SystemNavigationBar.stickyImmersive(true).catch(() => {});
+      SystemNavigationBar.navigationHide().catch(() => {});
+      SystemNavigationBar.setFitsSystemWindows(false).catch(() => {});
+    }
+
+    return () => {
+      StatusBar.setHidden(false, 'fade');
+      Orientation.lockToPortrait();
+
+      if (Platform.OS === 'android') {
+        SystemNavigationBar.stickyImmersive(false).catch(() => {});
+        SystemNavigationBar.fullScreen(false).catch(() => {});
+        SystemNavigationBar.navigationShow().catch(() => {});
+        SystemNavigationBar.setFitsSystemWindows(true).catch(() => {});
+        SystemNavigationBar.setNavigationColor(glass.base, glass.isDarkMode ? 'light' : 'dark', 'navigation').catch(() => {});
+        SystemNavigationBar.setNavigationBarContrastEnforced(false).catch(() => {});
+      }
+    };
+  }, [glass.base, glass.isDarkMode, isVisible]);
+
   // Parse lyrics into sections
   const parseLyrics = (lyrics: string): LyricSection[] => {
-    if (!lyrics) return [];
-    
+    if (!lyrics) {return [];}
+
     // First, replace escaped newlines with actual newlines
     const unescapedLyrics = lyrics.replace(/\\n/g, '\n');
-    
+
     // Split by double newlines to separate sections
     const sections = unescapedLyrics.split(/\n\s*\n/).filter(section => section.trim() !== '');
     const parsedSections: LyricSection[] = [];
-    
+
     sections.forEach(section => {
       const trimmedSection = section.trim();
-      if (trimmedSection === '') return;
-      
+      if (trimmedSection === '') {return;}
+
       // Check if it starts with a number (verse)
       const verseMatch = trimmedSection.match(/^(\d+)\.?\s*/);
       if (verseMatch) {
         parsedSections.push({
           type: 'verse',
-          number: parseInt(verseMatch[1]),
-          content: trimmedSection.replace(/^\d+\.?\s*/, '').trim()
+          number: parseInt(verseMatch[1], 10),
+          content: trimmedSection.replace(/^\d+\.?\s*/, '').trim(),
         });
       } else {
         // It's likely a chorus or refrain
         parsedSections.push({
           type: 'chorus',
-          content: trimmedSection
+          content: trimmedSection,
         });
       }
     });
-    
-    return parsedSections;
+
+    return parsedSections.length > 0
+      ? parsedSections
+      : [{ type: 'verse', content: unescapedLyrics.trim() }];
   };
 
   const handleClose = useCallback(() => {
@@ -107,20 +164,20 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
       const sections = parseLyrics(song.lyrics || song.verse || '');
       setLyricSections(sections);
       setCurrentSection(0);
-      
+
       // Update screen dimensions
       const updateDimensions = () => {
         setScreenDimensions(Dimensions.get('window'));
       };
-      
+
       const subscription = Dimensions.addEventListener('change', updateDimensions);
-      
+
       // Handle back button on Android
       const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
         handleClose();
         return true;
       });
-      
+
       return () => {
         subscription?.remove();
         backHandler.remove();
@@ -134,16 +191,39 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
 
 
   const goToNext = () => {
-    if (currentSection < lyricSections.length - 1) {
-      setCurrentSection(currentSection + 1);
+    const sectionIndex = currentSectionRef.current;
+    const sections = lyricSectionsRef.current;
+    if (sectionIndex < sections.length - 1) {
+      setCurrentSection(sectionIndex + 1);
     }
   };
 
   const goToPrevious = () => {
-    if (currentSection > 0) {
-      setCurrentSection(currentSection - 1);
+    const sectionIndex = currentSectionRef.current;
+    if (sectionIndex > 0) {
+      setCurrentSection(sectionIndex - 1);
     }
   };
+
+  const panResponder = React.useMemo(
+    () => PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => (
+        Math.abs(gestureState.dx) > 28 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.35
+      ),
+      onPanResponderRelease: (_, gestureState) => {
+        if (Math.abs(gestureState.dx) < 56) {
+          return;
+        }
+
+        if (gestureState.dx < 0) {
+          goToNext();
+        } else {
+          goToPrevious();
+        }
+      },
+    }),
+    [],
+  );
 
   const handleOpenFontSizePopup = () => setIsFontSizePopupVisible(true);
   const handleCloseFontSizePopup = () => setIsFontSizePopupVisible(false);
@@ -160,13 +240,13 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
   const isLandscape = screenDimensions.width > screenDimensions.height;
 
   return (
-    <View style={tw`absolute inset-0 z-50`}>
+    <View style={tw`absolute inset-0 z-50`} {...panResponder.panHandlers}>
       <StatusBar hidden />
       <KeepAwake />
       <GlassBackground>
-      <SafeAreaView 
+      <SafeAreaView
         style={tw`flex-1`}
-        edges={['left', 'right']}
+        edges={[]}
       >
         <View style={tw`flex-1 relative`}>
           {/* Header */}
@@ -176,25 +256,25 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
                {song.title}
               </Text>
               <Text style={[tw`text-sm font-nokia-bold`, { color: glass.accent }]}>
-                {currentLyricSection.type === 'verse' 
-                  ? `Slide ${currentLyricSection.number}` 
+                {currentLyricSection.type === 'verse'
+                  ? `Slide ${currentLyricSection.number}`
                   : 'Slide'
                 } - {currentSection + 1} of {lyricSections.length}
               </Text>
             </View>
-            
+
             {/* Font Size Button */}
             <TouchableWithoutFeedback onPress={handleOpenFontSizePopup}>
               <View style={tw`p-2 mr-2`}>
                 <Text style={[tw`font-nokia-bold text-lg`, { color: glass.text }]}>Aa</Text>
               </View>
             </TouchableWithoutFeedback>
-            
+
             <TouchableWithoutFeedback onPress={handleClose}>
               <View style={tw`p-2`}>
-                <ArrowsPointingInIcon 
-                  size={24} 
-                  color={glass.text} 
+                <ArrowsPointingInIcon
+                  size={24}
+                  color={glass.text}
                 />
               </View>
             </TouchableWithoutFeedback>
@@ -203,7 +283,7 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
           {/* Main Content with Navigation Buttons */}
           <View style={tw`flex-1 flex-row items-stretch pb-16`}>
             {/* Left Navigation Button */}
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={goToPrevious}
               style={[
                 tw`absolute left-4 z-10 p-4 rounded-full`,
@@ -212,9 +292,9 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
               ]}
               disabled={currentSection === 0}
             >
-              <ChevronLeftIcon 
-                size={32} 
-                color={glass.text} 
+              <ChevronLeftIcon
+                size={32}
+                color={glass.text}
               />
             </TouchableOpacity>
 
@@ -242,13 +322,13 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
                     paddingTop: 18,
                     paddingBottom: 18,
                     includeFontPadding: true,
-                  }
+                  },
                 ]}
               />
             </ScrollView>
 
             {/* Right Navigation Button */}
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={goToNext}
               style={[
                 tw`absolute right-4 z-10 p-4 rounded-full`,
@@ -257,9 +337,9 @@ const FullScreenVerse: React.FC<FullScreenVerseProps> = ({ song, isVisible, onCl
               ]}
               disabled={currentSection === lyricSections.length - 1}
             >
-              <ChevronRightIcon 
-                size={32} 
-                color={glass.text} 
+              <ChevronRightIcon
+                size={32}
+                color={glass.text}
               />
             </TouchableOpacity>
           </View>

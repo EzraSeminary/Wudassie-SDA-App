@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, LayoutChangeEvent, PanResponder, View, Text, FlatList, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
@@ -7,7 +7,7 @@ import tw from '../../../tailwind';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HeartIcon as SolidHeartIcon } from 'react-native-heroicons/solid';
 import { MusicalNoteIcon } from 'react-native-heroicons/outline';
-import { getCardStyle, useBottomContentPadding } from '../../utils/platformUtils';
+import { useBottomContentPadding } from '../../utils/platformUtils';
 
 import { hymnalService, HagerignaHymn } from '../../services/hymnalService';
 import { RootState, AppDispatch } from '../../store';
@@ -37,6 +37,8 @@ const FavoritesList = () => {
   const [selectedType, setSelectedType] = useState<'hymnal' | 'hagerigna'>('hagerigna');
   const [hymnsLoading, setHymnsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [segmentWidth, setSegmentWidth] = useState(0);
+  const slideAnim = useRef(new Animated.Value(1)).current;
 
   const navigation = useNavigation<FavoritesListNavigationProp>();
   const insets = useSafeAreaInsets();
@@ -129,6 +131,39 @@ const FavoritesList = () => {
   }, [allHymnalSongs, favoriteIds]);
 
   const currentFavorites = selectedType === 'hagerigna' ? favoriteHagerignaHymns : favoriteHymnalSongs;
+  const activeSegmentIndex = selectedType === 'hymnal' ? 0 : 1;
+
+  useEffect(() => {
+    if (segmentWidth <= 0) return;
+    Animated.spring(slideAnim, {
+      toValue: activeSegmentIndex,
+      useNativeDriver: true,
+      friction: 8,
+      tension: 120,
+    }).start();
+  }, [activeSegmentIndex, segmentWidth, slideAnim]);
+
+  const segmentPadding = 6;
+  const onSegmentLayout = (e: LayoutChangeEvent) => {
+    const { width } = e.nativeEvent.layout;
+    const nextWidth = (width - segmentPadding * 2) / 2;
+    if (nextWidth > 0) {
+      setSegmentWidth(nextWidth);
+    }
+  };
+
+  const swipeResponder = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gesture) => (
+      Math.abs(gesture.dx) > 40 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.4
+    ),
+    onPanResponderRelease: (_, gesture) => {
+      if (gesture.dx < -55) {
+        setSelectedType('hagerigna');
+      } else if (gesture.dx > 55) {
+        setSelectedType('hymnal');
+      }
+    },
+  }), []);
 
   const handlePressSong = (song: FavoriteSong) => {
     if (song.type === 'hagerigna') {
@@ -157,10 +192,10 @@ const FavoritesList = () => {
     songTitle: [tw`text-lg font-nokia-bold`, { color: glass.text }],
     artistName: [tw`text-sm font-nokia-bold`, { color: glass.mutedText }],
     emptyText: [tw`text-center font-nokia-bold`, { color: glass.text }],
-    header: [tw`flex-row items-center px-5 pb-2 border-b`, { borderColor: glass.border }],
-    toggleButton: [tw`flex-1 py-3 px-4 mx-2 rounded-2xl`, glassSurface(glass)],
-    toggleButtonActive: [tw`flex-1 py-3 px-4 mx-2 rounded-2xl`, { backgroundColor: glass.accent }],
-    toggleButtonText: [tw`text-center font-nokia-bold`, { color: glass.text }],
+    header: [tw`flex-row items-center px-5 pb-4`, { borderColor: glass.border }],
+    segmentTrack: [tw`flex-row rounded-full overflow-hidden`, glassSurface(glass, true)],
+    segmentButton: [tw`flex-1 py-3 items-center justify-center`, { zIndex: 1 }],
+    segmentText: [tw`text-center font-nokia-bold`, { color: glass.text }],
     toggleButtonTextActive: tw`text-center font-nokia-bold text-white`,
   };
 
@@ -189,31 +224,43 @@ const FavoritesList = () => {
   }
 
   const renderToggleButtons = () => (
-    <View style={tw`flex-row px-4 py-3 bg-transparent`}>
+    <View style={tw`px-4 pb-2`}>
+      <View style={[dynamicStyles.segmentTrack, { padding: segmentPadding }]} onLayout={onSegmentLayout}>
+        <Animated.View
+          style={[
+            tw`absolute rounded-full`,
+            {
+              left: segmentPadding,
+              top: segmentPadding,
+              bottom: segmentPadding,
+              width: segmentWidth,
+              backgroundColor: glass.accent,
+              transform: [{
+                translateX: slideAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, segmentWidth],
+                }),
+              }],
+            },
+          ]}
+        />
       <TouchableOpacity
-        style={[
-          dynamicStyles.toggleButton,
-          selectedType === 'hymnal' ? dynamicStyles.toggleButtonActive : {},
-          getCardStyle()
-        ]}
+        style={dynamicStyles.segmentButton}
         onPress={() => setSelectedType('hymnal')}
       >
-        <Text style={selectedType === 'hymnal' ? dynamicStyles.toggleButtonTextActive : dynamicStyles.toggleButtonText}>
+        <Text style={selectedType === 'hymnal' ? dynamicStyles.toggleButtonTextActive : dynamicStyles.segmentText}>
           Hymnal
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
-        style={[
-          dynamicStyles.toggleButton,
-          selectedType === 'hagerigna' ? dynamicStyles.toggleButtonActive : {},
-          getCardStyle()
-        ]}
+        style={dynamicStyles.segmentButton}
         onPress={() => setSelectedType('hagerigna')}
       >
-        <Text style={selectedType === 'hagerigna' ? dynamicStyles.toggleButtonTextActive : dynamicStyles.toggleButtonText}>
+        <Text style={selectedType === 'hagerigna' ? dynamicStyles.toggleButtonTextActive : dynamicStyles.segmentText}>
           Hagerigna
         </Text>
       </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -228,7 +275,7 @@ const FavoritesList = () => {
             </Text>
           </View>
           {renderToggleButtons()}
-          <View style={tw`flex-1 justify-center items-center`}>
+          <View style={tw`flex-1 justify-center items-center`} {...swipeResponder.panHandlers}>
             <Text style={[dynamicStyles.emptyText, tw`text-xl`]}>
               No favorite {selectedType === 'hymnal' ? 'hymnal' : 'Hagerigna'} songs yet.
             </Text>
@@ -280,13 +327,15 @@ const FavoritesList = () => {
           </Text>
         </View>
         {renderToggleButtons()}
-        <FlatList
-          data={currentFavorites}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderItem}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={[tw`pb-24` as any, { paddingBottom: contentBottomPadding }]}
-        />
+        <View style={tw`flex-1`} {...swipeResponder.panHandlers}>
+          <FlatList
+            data={currentFavorites}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={renderItem}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[tw`pb-24` as any, { paddingBottom: contentBottomPadding }]}
+          />
+        </View>
       </SafeAreaView>
     </GlassBackground>
   );

@@ -309,9 +309,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
+    top: 0,
     bottom: 0,
-    height: '48%',
-    opacity: 0.62,
+    opacity: 0.34,
   },
   blob: {
     position: 'absolute',

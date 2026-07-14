@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableWithoutFeedback, TouchableOpacity, Share, Animated } from 'react-native';
-import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
+import { RouteProp, useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSelector, useDispatch } from 'react-redux';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,6 +29,12 @@ type SongDetailRouteProp = RouteProp<RootStackParamList, 'SongDetail'>;
 type SongDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SongDetail'>;
 
 const SCROLL_THRESHOLD = 55;
+
+const mapSdaSongForDetail = (item: SDAHymn, fallbackNumber: number) => ({
+  title: item.newHymnalTitle || item.title || item.oldHymnalTitle || `Song ${item.number ?? fallbackNumber}`,
+  englishTitle: item.englishTitleOld || '',
+  lyrics: item.newHymnalLyrics || item.lyrics || item.oldHymnalLyrics || '',
+});
 
 const SongDetail = () => {
   const { floatingButtonBottom, listBottomPadding } = useFloatingButtonLayout();
@@ -128,6 +134,47 @@ const SongDetail = () => {
     loadSongs();
   }, []);
 
+  useFocusEffect(
+    React.useCallback(() => {
+      let isActive = true;
+
+      const reloadSongs = async () => {
+        try {
+          const latestSongs = await hymnalService.getImmediateSDAHymns();
+          if (!isActive || latestSongs.length === 0) {
+            return;
+          }
+
+          setAllSongs(latestSongs);
+          const latestSong = latestSongs[songNumber - 1]
+            || latestSongs.find((item) =>
+              item.newHymnalTitle === song.title ||
+              item.title === song.title ||
+              item.oldHymnalTitle === song.title
+            );
+
+          if (latestSong) {
+            setFullSongData(latestSong);
+            navigation.setParams({
+              song: mapSdaSongForDetail(latestSong, songNumber),
+              songNumber,
+            });
+          }
+        } catch (error) {
+          if (__DEV__) {
+            console.error('Error reloading SDA song on focus:', error);
+          }
+        }
+      };
+
+      reloadSongs();
+
+      return () => {
+        isActive = false;
+      };
+    }, [navigation, song.title, songNumber]),
+  );
+
   const handleOpenPopup = () => setIsFontSizePopupVisible(true);
   const handleClosePopup = () => setIsFontSizePopupVisible(false);
   const handleOpenNumpad = () => setIsNumpadVisible(true);
@@ -168,11 +215,7 @@ const SongDetail = () => {
     const nextSong = allSongs[songNum - 1];
     if (!nextSong) return;
 
-    const newSong = {
-      title: nextSong.newHymnalTitle || nextSong.title || nextSong.oldHymnalTitle || `Song ${songNum}`,
-      englishTitle: nextSong.englishTitleOld || '',
-      lyrics: nextSong.newHymnalLyrics || nextSong.lyrics || nextSong.oldHymnalLyrics || '',
-    };
+    const newSong = mapSdaSongForDetail(nextSong, songNum);
 
     navigation.navigate('SongDetail', { song: newSong, songNumber: songNum });
   };
@@ -192,6 +235,7 @@ const SongDetail = () => {
   const handleSwipeNavigation = (direction: 'next' | 'previous') => navigateToSong(direction);
 
   const panGesture = Gesture.Pan()
+    .enabled(!isFullScreen)
     .minDistance(50)
     .onEnd((event) => {
       const { translationX, velocityX } = event;

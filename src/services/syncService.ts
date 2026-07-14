@@ -4,13 +4,24 @@ import { hymnalService } from './hymnalService';
 
 export const LAST_SYNC_KEY = 'last_sync_timestamp';
 
+const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+type SyncOptions = {
+  respectSyncInterval?: boolean;
+};
+
+const hasChanged = <T>(previousItems: T[], nextItems: T[]): boolean => {
+  return JSON.stringify(previousItems) !== JSON.stringify(nextItems);
+};
+
 export const syncService = {
-  async checkForUpdates() {
+  async checkForUpdates(options: SyncOptions = {}) {
     try {
+      const { respectSyncInterval = true } = options;
       await hymnalService.seedBundledDataIfNeeded();
 
       const netInfo = await NetInfo.fetch();
-      if (!netInfo.isConnected) {
+      if (!netInfo.isConnected || netInfo.isInternetReachable === false) {
         if (__DEV__) {
           console.log('No internet connection available');
         }
@@ -21,24 +32,49 @@ export const syncService = {
       const currentTime = new Date().getTime();
 
       // Check for updates every 24 hours
-      if (lastSync && currentTime - parseInt(lastSync) < 24 * 60 * 60 * 1000) {
+      if (respectSyncInterval && lastSync && currentTime - parseInt(lastSync, 10) < SYNC_INTERVAL_MS) {
         if (__DEV__) {
           console.log('Skipping sync - last sync was less than 24 hours ago');
         }
         return false;
       }
 
-      // Fetch latest data from backend API
-      await Promise.all([
-        hymnalService.getSDAHymnsFromApi(),
-        hymnalService.getHagerignaHymnsFromApi()
+      const [previousHagerigna, previousHymnal] = await Promise.all([
+        hymnalService.getImmediateHagerignaHymns(),
+        hymnalService.getImmediateSDAHymns(),
       ]);
+
+      // Fetch latest data from backend API
+      const [hymnalResult, hagerignaResult] = await Promise.allSettled([
+        hymnalService.getSDAHymnsFromApi(),
+        hymnalService.getHagerignaHymnsFromApi(),
+      ]);
+
+      if (hymnalResult.status === 'rejected' && hagerignaResult.status === 'rejected') {
+        if (__DEV__) {
+          console.error('Error syncing data:', hymnalResult.reason, hagerignaResult.reason);
+        }
+        return false;
+      }
+
       await AsyncStorage.setItem(LAST_SYNC_KEY, currentTime.toString());
 
+      const nextHymnal = hymnalResult.status === 'fulfilled'
+        ? hymnalResult.value
+        : previousHymnal;
+      const nextHagerigna = hagerignaResult.status === 'fulfilled'
+        ? hagerignaResult.value
+        : previousHagerigna;
+      const songsChanged =
+        hasChanged(previousHymnal, nextHymnal) ||
+        hasChanged(previousHagerigna, nextHagerigna);
+
       if (__DEV__) {
-        console.log('Successfully synced data from backend API');
+        console.log(songsChanged
+          ? 'Successfully synced updated data from backend API'
+          : 'Backend data matches cached songs');
       }
-      return true;
+      return songsChanged;
     } catch (error) {
       if (__DEV__) {
         console.error('Error syncing data:', error);
@@ -70,5 +106,5 @@ export const syncService = {
       }
       return null;
     }
-  }
-}; 
+  },
+};

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableWithoutFeedback, TouchableOpacity, Share, Animated } from 'react-native';
-import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
+import { RouteProp, useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
 import { RootStackParamList } from '../../../App';
@@ -130,6 +130,40 @@ const HagerignaDetail = () => {
     loadSongs();
   }, []);
 
+  useFocusEffect(
+    React.useCallback(() => {
+      let isActive = true;
+
+      const reloadSongs = async () => {
+        try {
+          const latestSongs = await hymnalService.getImmediateHagerignaHymns();
+          if (!isActive || latestSongs.length === 0) {
+            return;
+          }
+
+          setAllSongs(latestSongs);
+          const latestSong = latestSongs.find((s: HagerignaHymn) => s.id === song.id)
+            || latestSongs.find((s: HagerignaHymn) => s.title === song.title);
+          if (latestSong) {
+            setSong(latestSong);
+            setFullSongData(latestSong);
+            navigation.setParams({ song: latestSong, songNumber });
+          }
+        } catch (error) {
+          if (__DEV__) {
+            console.error('Error reloading Hagerigna song on focus:', error);
+          }
+        }
+      };
+
+      reloadSongs();
+
+      return () => {
+        isActive = false;
+      };
+    }, [navigation, song.id, song.title, songNumber]),
+  );
+
   useEffect(() => {
     const fetchFullSongData = async () => {
       try {
@@ -206,6 +240,7 @@ const HagerignaDetail = () => {
   const handleSwipeNavigation = (direction: 'next' | 'previous') => navigateToSong(direction);
 
   const panGesture = Gesture.Pan()
+    .enabled(!isFullScreen)
     .minDistance(50)
     .onEnd((event) => {
       const { translationX, velocityX } = event;
