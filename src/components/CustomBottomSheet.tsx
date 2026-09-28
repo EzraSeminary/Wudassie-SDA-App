@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { StyleSheet, Switch, View, Text, TouchableOpacity } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState, setFontSizeWithPersistence, toggleDarkModeWithPersistence, setGlassPaletteWithPersistence, AppDispatch } from '../store';
+import { RootState, setFontSizeWithPersistence, toggleDarkModeWithPersistence, setGlassPaletteWithPersistence, setKeepDisplayOnWithPersistence, AppDispatch } from '../store';
 import tw from './../../tailwind';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { BlurView } from '@react-native-community/blur';
@@ -27,6 +27,7 @@ const FontSizePopup = ({
   const fontSize = useSelector((state: RootState) => state.fontSize.fontSize);
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
   const selectedPalette = useSelector((state: RootState) => state.theme.glassPalette);
+  const keepDisplayOn = useSelector((state: RootState) => state.display.keepDisplayOn);
   const glass = useGlassTheme();
   const dispatch = useDispatch<AppDispatch>();
 
@@ -175,6 +176,20 @@ const FontSizePopup = ({
         </View>
 
         <View style={[tw`mt-5 rounded-xl p-4`, glassSurface(glass, true)]}>
+          <View style={tw`flex-row items-center justify-between mb-4`}>
+            <View>
+              <Text style={[tw`text-base font-nokia-bold`, { color: glass.text }]}>Keep Display On</Text>
+              <Text style={[tw`text-xs font-nokia-bold mt-1`, { color: glass.mutedText }]}>
+                Prevent the screen from sleeping
+              </Text>
+            </View>
+            <Switch
+              value={keepDisplayOn}
+              onValueChange={(value) => dispatch(setKeepDisplayOnWithPersistence(value))}
+              trackColor={{ false: glass.border, true: glass.accent }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
           <View style={tw`flex-row items-center justify-between mb-4`}>
             <View>
               <Text style={[tw`text-base font-nokia-bold`, { color: glass.text }]}>Dark Mode</Text>

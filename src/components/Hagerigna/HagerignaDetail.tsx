@@ -14,6 +14,7 @@ import MoreMenu from './../MoreMenu';
 import SheetMusicViewer from './../SheetMusicViewer';
 import AudioPlayer from './../AudioPlayer';
 import SelectableLyrics from './../SelectableLyrics';
+import SuggestEditSheet from './../SuggestEditSheet';
 import { hymnalService, HagerignaHymn } from '../../services/hymnalService';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import tw from '../../../tailwind';
@@ -51,6 +52,7 @@ const HagerignaDetail = () => {
   const [isMoreMenuVisible, setIsMoreMenuVisible] = useState(false);
   const [isSheetMusicVisible, setIsSheetMusicVisible] = useState(false);
   const [isAudioVisible, setIsAudioVisible] = useState(false);
+  const [isSuggestEditVisible, setIsSuggestEditVisible] = useState(false);
   const [song, setSong] = useState<HagerignaHymn>(initialSong);
   const [fullSongData, setFullSongData] = useState<HagerignaHymn | null>(null);
   const [allSongs, setAllSongs] = useState<HagerignaHymn[]>([]);
@@ -107,6 +109,8 @@ const HagerignaDetail = () => {
   const handleCloseSheetMusic = () => setIsSheetMusicVisible(false);
   const handleOpenAudio = () => setIsAudioVisible(true);
   const handleCloseAudio = () => setIsAudioVisible(false);
+  const handleOpenSuggestEdit = () => setIsSuggestEditVisible(true);
+  const handleCloseSuggestEdit = () => setIsSuggestEditVisible(false);
 
   const hasSheetMusic = fullSongData?.sheet_music && fullSongData.sheet_music.length > 0;
   const hasAudio = !!fullSongData?.audio;
@@ -423,6 +427,16 @@ const HagerignaDetail = () => {
                 selectionColor={accentColor}
               />
               </View>
+              {/* <TouchableOpacity
+                onPress={handleOpenSuggestEdit}
+                activeOpacity={0.82}
+                style={[
+                  tw`mt-4 rounded-2xl py-4 items-center`,
+                  { backgroundColor: glass.accent },
+                ]}
+              >
+                <Text style={tw`text-white font-nokia-bold text-base`}>Suggest Edit</Text>
+              </TouchableOpacity> */}
             </View>
           </Animated.ScrollView>
         </SafeAreaView>
@@ -489,6 +503,12 @@ const HagerignaDetail = () => {
           }}
           isVisible={isFullScreen}
           onClose={() => setIsFullScreen(false)}
+        />
+        <SuggestEditSheet
+          visible={isSuggestEditVisible}
+          onClose={handleCloseSuggestEdit}
+          hymnalType="hagerigna"
+          hymn={fullSongData || song}
         />
       </GlassBackground>
     </GestureDetector>

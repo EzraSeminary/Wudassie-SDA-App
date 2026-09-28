@@ -21,14 +21,14 @@ const BAR_HEIGHT = 70;
 const getBottomFadeOpacity = (isDarkMode: boolean) => {
   if (Platform.OS === 'android') {
     return {
-      bottom: isDarkMode ? 0.88 : 0.82,
-      middle: isDarkMode ? 0.7 : 0.64,
+      bottom: isDarkMode ? 0.48 : 0.38,
+      middle: isDarkMode ? 0.22 : 0.16,
     };
   }
 
   return {
-    bottom: isDarkMode ? 0.76 : 0.58,
-    middle: isDarkMode ? 0.54 : 0.38,
+    bottom: isDarkMode ? 0.42 : 0.3,
+    middle: isDarkMode ? 0.2 : 0.12,
   };
 };
 
@@ -77,7 +77,7 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
         pointerEvents="none"
         style={[
           styles.bottomFade,
-          { height: BAR_HEIGHT + Math.max(insets.bottom, 8) + 48 },
+          { height: BAR_HEIGHT + Math.max(insets.bottom, 8) + 8 },
         ]}
       >
         <Svg width="100%" height="100%" preserveAspectRatio="none">

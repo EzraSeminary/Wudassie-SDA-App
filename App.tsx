@@ -13,7 +13,7 @@ import { Provider, useSelector, useDispatch } from 'react-redux';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppState, StatusBar, Platform, Text, TextInput } from 'react-native';
-import store, { RootState, loadTheme, loadFontSize, AppDispatch } from './src/store';
+import store, { RootState, loadTheme, loadFontSize, loadKeepDisplayOn, AppDispatch } from './src/store';
 import { getNokiaFontName } from './src/utils/platformUtils';
 import SongList from './src/components/SongList';
 import SongDetail from './src/components/SongDetail';
@@ -33,6 +33,7 @@ import { navigationRef } from './src/navigation/navigationRef';
 import notifee, { EventType } from '@notifee/react-native';
 import { useGlassTheme } from './src/components/glass/GlassBackground';
 import GlassTabBar from './src/components/glass/GlassTabBar';
+import KeepAwake from 'react-native-keep-awake';
 
 // Force global default Nokia font for all Text and TextInput components
 const _defaultNokiaFont = getNokiaFontName('regular');
@@ -163,6 +164,7 @@ const MainTabs = () => {
 
 const AppContent = () => {
   const isDarkMode = useSelector((state: RootState) => state.theme.isDarkMode);
+  const keepDisplayOn = useSelector((state: RootState) => state.display.keepDisplayOn);
   const glass = useGlassTheme();
   const dispatch = useDispatch<AppDispatch>();
   const [showSplash, setShowSplash] = useState(true);
@@ -171,6 +173,7 @@ const AppContent = () => {
     // Load saved theme when app starts
     dispatch(loadTheme());
     dispatch(loadFontSize());
+    dispatch(loadKeepDisplayOn());
 
     // Check for updates when app starts.
     syncSongsOnOpen();
@@ -261,6 +264,7 @@ const AppContent = () => {
         })}
         translucent={Platform.OS === 'android'}
       />
+      {keepDisplayOn ? <KeepAwake /> : null}
       {showSplash ? (
         <SplashScreen onFinish={handleSplashFinish} />
       ) : SHOW_FONT_DEBUG ? (

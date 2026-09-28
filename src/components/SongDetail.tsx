@@ -17,6 +17,7 @@ import MoreMenu from './MoreMenu';
 import SheetMusicViewer from './SheetMusicViewer';
 import AudioPlayer from './AudioPlayer';
 import SelectableLyrics from './SelectableLyrics';
+import SuggestEditSheet from './SuggestEditSheet';
 import { hymnalService, SDAHymn } from '../services/hymnalService';
 import tw from '../../tailwind';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -55,6 +56,7 @@ const SongDetail = () => {
   const [isMoreMenuVisible, setIsMoreMenuVisible] = useState(false);
   const [isSheetMusicVisible, setIsSheetMusicVisible] = useState(false);
   const [isAudioVisible, setIsAudioVisible] = useState(false);
+  const [isSuggestEditVisible, setIsSuggestEditVisible] = useState(false);
   const [fullSongData, setFullSongData] = useState<SDAHymn | null>(null);
   const [allSongs, setAllSongs] = useState<SDAHymn[]>([]);
 
@@ -185,6 +187,8 @@ const SongDetail = () => {
   const handleCloseSheetMusic = () => setIsSheetMusicVisible(false);
   const handleOpenAudio = () => setIsAudioVisible(true);
   const handleCloseAudio = () => setIsAudioVisible(false);
+  const handleOpenSuggestEdit = () => setIsSuggestEditVisible(true);
+  const handleCloseSuggestEdit = () => setIsSuggestEditVisible(false);
 
   const hasSheetMusic = fullSongData?.sheet_music && fullSongData.sheet_music.length > 0;
   const hasAudio = !!fullSongData?.audio;
@@ -412,6 +416,16 @@ const SongDetail = () => {
                 selectionColor={accentColor}
               />
             </View>
+            {/* <TouchableOpacity
+              onPress={handleOpenSuggestEdit}
+              activeOpacity={0.82}
+              style={[
+                tw`mt-4 rounded-2xl py-4 items-center`,
+                { backgroundColor: glass.accent },
+              ]}
+            >
+              <Text style={tw`text-white font-nokia-bold text-base`}>Suggest Edit</Text>
+            </TouchableOpacity> */}
           </Animated.ScrollView>
         </SafeAreaView>
 
@@ -474,6 +488,20 @@ const SongDetail = () => {
             title={song.title}
           />
         )}
+        <SuggestEditSheet
+          visible={isSuggestEditVisible}
+          onClose={handleCloseSuggestEdit}
+          hymnalType="sda"
+          hymn={fullSongData || {
+            id: hymnalSongId,
+            title: song.title,
+            lyrics: song.lyrics,
+            number: songNumber,
+            newHymnalTitle: song.title,
+            newHymnalLyrics: song.lyrics,
+            englishTitleOld: song.englishTitle,
+          }}
+        />
       </GlassBackground>
     </GestureDetector>
   );

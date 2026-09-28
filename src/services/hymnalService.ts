@@ -6,6 +6,7 @@ import localSdaHymns from '../components/SDA_Hymnal.json';
 
 export interface HagerignaHymn {
   id: string;
+  backendId?: string;
   title: string;
   song: string;
   artist?: string;
@@ -24,6 +25,7 @@ export interface HagerignaHymn {
 
 export interface SDAHymn {
   id: string;
+  backendId?: string;
   title: string;
   lyrics: string;
   number: number;
@@ -47,10 +49,13 @@ const getSdaIdOrder = (id?: string): number => {
   return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
 };
 
+const getBackendId = (item: { id?: string; backendId?: string }) => item.backendId || item.id;
+
 const normalizeSDAHymns = (items: SDAHymn[]): SDAHymn[] => {
   return items
     .map((item, originalIndex) => ({
       ...item,
+      backendId: getBackendId(item),
       originalIndex,
       idOrder: getSdaIdOrder(item.id),
     }))
@@ -68,6 +73,7 @@ const normalizeSDAHymns = (items: SDAHymn[]): SDAHymn[] => {
       return {
         ...item,
         id: `hymnal-${resolvedNumber}`,
+        backendId: item.backendId,
         number: resolvedNumber,
       };
     });
@@ -105,6 +111,7 @@ const normalizeHagerignaHymns = (items: HagerignaHymn[]): HagerignaHymn[] => {
       return nestedTracks.map((track, trackIndex) => ({
         ...track,
         id: track.id || `${albumId}-track-${trackIndex + 1}`,
+        backendId: getBackendId(track),
         title: track.title || `${albumName} ${trackIndex + 1}`,
         song: track.song || '',
         artist: track.artist || track.choirName || albumArtist,
@@ -120,6 +127,7 @@ const normalizeHagerignaHymns = (items: HagerignaHymn[]): HagerignaHymn[] => {
 
     return {
       ...item,
+      backendId: getBackendId(item),
       id: `hagerigna-${index + 1}`,
       artist: item.artist || item.choirName,
       isAlbum: parentIsAlbum,

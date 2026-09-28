@@ -13,6 +13,10 @@ interface ThemeState {
   glassPalette: GlassPaletteId;
 }
 
+interface DisplayState {
+  keepDisplayOn: boolean;
+}
+
 const initialFontSizeState: FontSizeState = {
   fontSize: 18,
 };
@@ -20,6 +24,10 @@ const initialFontSizeState: FontSizeState = {
 const initialThemeState: ThemeState = {
   isDarkMode: false,
   glassPalette: 'graceMercy',
+};
+
+const initialDisplayState: DisplayState = {
+  keepDisplayOn: false,
 };
 
 const fontSizeSlice = createSlice({
@@ -116,6 +124,32 @@ export const saveGlassPalette = createAsyncThunk(
   }
 );
 
+export const loadKeepDisplayOn = createAsyncThunk(
+  'display/loadKeepDisplayOn',
+  async () => {
+    try {
+      const savedKeepDisplayOn = await AsyncStorage.getItem('keepDisplayOn');
+      return savedKeepDisplayOn ? JSON.parse(savedKeepDisplayOn) : false;
+    } catch (error) {
+      console.error('Error loading keep display on setting:', error);
+      return false;
+    }
+  },
+);
+
+export const saveKeepDisplayOn = createAsyncThunk(
+  'display/saveKeepDisplayOn',
+  async (keepDisplayOn: boolean) => {
+    try {
+      await AsyncStorage.setItem('keepDisplayOn', JSON.stringify(keepDisplayOn));
+      return keepDisplayOn;
+    } catch (error) {
+      console.error('Error saving keep display on setting:', error);
+      throw error;
+    }
+  },
+);
+
 const themeSlice = createSlice({
   name: 'theme',
   initialState: initialThemeState,
@@ -145,8 +179,28 @@ const themeSlice = createSlice({
   },
 });
 
+const displaySlice = createSlice({
+  name: 'display',
+  initialState: initialDisplayState,
+  reducers: {
+    setKeepDisplayOn(state, action: PayloadAction<boolean>) {
+      state.keepDisplayOn = action.payload;
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(loadKeepDisplayOn.fulfilled, (state, action) => {
+        state.keepDisplayOn = action.payload;
+      })
+      .addCase(saveKeepDisplayOn.fulfilled, (state, action) => {
+        state.keepDisplayOn = action.payload;
+      });
+  },
+});
+
 export const { setFontSize } = fontSizeSlice.actions;
 export const { toggleDarkMode, setDarkMode, setGlassPalette } = themeSlice.actions;
+export const { setKeepDisplayOn } = displaySlice.actions;
 
 // Enhanced font size actions that automatically save to storage
 export const setFontSizeWithPersistence = (fontSize: number): AppThunk => async (dispatch) => {
@@ -158,7 +212,7 @@ export const setFontSizeWithPersistence = (fontSize: number): AppThunk => async 
 export const toggleDarkModeWithPersistence = (): AppThunk => async (dispatch, getState) => {
   const currentTheme = getState().theme.isDarkMode;
   const newTheme = !currentTheme;
-  
+
   dispatch(toggleDarkMode());
   dispatch(saveTheme(newTheme));
 };
@@ -173,10 +227,16 @@ export const setGlassPaletteWithPersistence = (palette: GlassPaletteId): AppThun
   dispatch(saveGlassPalette(palette));
 };
 
+export const setKeepDisplayOnWithPersistence = (keepDisplayOn: boolean): AppThunk => async (dispatch) => {
+  dispatch(setKeepDisplayOn(keepDisplayOn));
+  dispatch(saveKeepDisplayOn(keepDisplayOn));
+};
+
 const store = configureStore({
   reducer: {
     fontSize: fontSizeSlice.reducer,
     theme: themeSlice.reducer,
+    display: displaySlice.reducer,
     favorites: favoritesReducer,
   },
   middleware: (getDefaultMiddleware) =>
