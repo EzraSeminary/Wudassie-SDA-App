@@ -16,9 +16,12 @@ import FullScreenVerse from './FullScreenVerse';
 import MoreMenu from './MoreMenu';
 import SheetMusicViewer from './SheetMusicViewer';
 import AudioPlayer from './AudioPlayer';
-import SelectableLyrics from './SelectableLyrics';
+import SelectableLyrics, { LyricSelection } from './SelectableLyrics';
+import LyricSelectionSheet from './LyricSelectionSheet';
+import HymnImageCreator from './HymnImageCreator';
 import SuggestEditSheet from './SuggestEditSheet';
 import { hymnalService, SDAHymn } from '../services/hymnalService';
+import { getCongregationalPitch } from '../utils/hymnPitch';
 import tw from '../../tailwind';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
@@ -57,8 +60,12 @@ const SongDetail = () => {
   const [isSheetMusicVisible, setIsSheetMusicVisible] = useState(false);
   const [isAudioVisible, setIsAudioVisible] = useState(false);
   const [isSuggestEditVisible, setIsSuggestEditVisible] = useState(false);
+  const [selectedLyrics, setSelectedLyrics] = useState<LyricSelection | null>(null);
+  const [isLyricSelectionVisible, setIsLyricSelectionVisible] = useState(false);
+  const [isImageCreatorVisible, setIsImageCreatorVisible] = useState(false);
   const [fullSongData, setFullSongData] = useState<SDAHymn | null>(null);
   const [allSongs, setAllSongs] = useState<SDAHymn[]>([]);
+  const pitchRecommendation = getCongregationalPitch(song.englishTitle, songNumber);
 
   // Animated interpolations for collapsing header
   const subtitleOpacity = scrollY.interpolate({
@@ -187,8 +194,17 @@ const SongDetail = () => {
   const handleCloseSheetMusic = () => setIsSheetMusicVisible(false);
   const handleOpenAudio = () => setIsAudioVisible(true);
   const handleCloseAudio = () => setIsAudioVisible(false);
-  const handleOpenSuggestEdit = () => setIsSuggestEditVisible(true);
   const handleCloseSuggestEdit = () => setIsSuggestEditVisible(false);
+  const handleSelectLyrics = (selection: LyricSelection) => {
+    setSelectedLyrics(selection);
+    setIsLyricSelectionVisible(true);
+  };
+  const handleCloseLyricSelection = () => setIsLyricSelectionVisible(false);
+  const handleOpenImageCreator = () => {
+    setIsLyricSelectionVisible(false);
+    setIsImageCreatorVisible(true);
+  };
+  const handleCloseImageCreator = () => setIsImageCreatorVisible(false);
 
   const hasSheetMusic = fullSongData?.sheet_music && fullSongData.sheet_music.length > 0;
   const hasAudio = !!fullSongData?.audio;
@@ -217,7 +233,9 @@ const SongDetail = () => {
   const handleGoToSong = (songNum: number) => {
     setIsNumpadVisible(false);
     const nextSong = allSongs[songNum - 1];
-    if (!nextSong) return;
+    if (!nextSong) {
+      return;
+    }
 
     const newSong = mapSdaSongForDetail(nextSong, songNum);
 
@@ -291,11 +309,30 @@ const SongDetail = () => {
         <SafeAreaView style={tw`flex-1`} edges={['top']}>
           {/* Top bar */}
           <View style={[dynamicStyles.header, { marginTop: Math.max(insets.top + 8, 20) }]}>
-            <TouchableWithoutFeedback onPress={handleBackPress}>
-              <View style={tw`p-2`}>
-                <ArrowLeftIcon size={24} color={accentColor} />
+            <View style={tw`flex-row items-center flex-1 min-w-0`}>
+              <TouchableWithoutFeedback onPress={handleBackPress}>
+                <View style={tw`p-2`}>
+                  <ArrowLeftIcon size={24} color={accentColor} />
+                </View>
+              </TouchableWithoutFeedback>
+              <View
+                style={[
+                  tw`ml-1 px-3 py-2 rounded-2xl flex-row items-center`,
+                  { backgroundColor: `${accentColor}1F` },
+                ]}
+              >
+                <Text
+                  style={[
+                    tw`font-nokia-bold text-sm`,
+                    getDefaultFontStyle('bold'),
+                    { color: accentColor },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {pitchRecommendation.label}
+                </Text>
               </View>
-            </TouchableWithoutFeedback>
+            </View>
             <View style={tw`flex-row items-center`}>
               <TouchableOpacity onPress={handleToggleFavorite} style={tw`p-2`}>
                 {isFavorite ? (
@@ -414,6 +451,7 @@ const SongDetail = () => {
                 text={song.lyrics}
                 style={dynamicStyles.lyrics}
                 selectionColor={accentColor}
+                onSelectSection={handleSelectLyrics}
               />
             </View>
             {/* <TouchableOpacity
@@ -501,6 +539,21 @@ const SongDetail = () => {
             newHymnalLyrics: song.lyrics,
             englishTitleOld: song.englishTitle,
           }}
+        />
+        <LyricSelectionSheet
+          visible={isLyricSelectionVisible}
+          selection={selectedLyrics}
+          onClose={handleCloseLyricSelection}
+          onCreateImage={handleOpenImageCreator}
+        />
+        <HymnImageCreator
+          visible={isImageCreatorVisible}
+          selection={selectedLyrics}
+          songTitle={song.title}
+          songNumber={songNumber}
+          englishTitle={song.englishTitle}
+          sourceType="hymnal"
+          onClose={handleCloseImageCreator}
         />
       </GlassBackground>
     </GestureDetector>

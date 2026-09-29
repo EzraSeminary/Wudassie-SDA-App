@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider, useSelector, useDispatch } from 'react-redux';
@@ -118,6 +118,13 @@ const FavoritesStack = () => (
 const Tab = createBottomTabNavigator();
 let startupSyncPromise: Promise<void> | null = null;
 
+const hiddenTabRoutes = new Set(['SongDetail', 'HagerignaDetail']);
+
+const getNestedTabBarStyle = (route: any) => {
+  const focusedRoute = getFocusedRouteNameFromRoute(route);
+  return hiddenTabRoutes.has(focusedRoute || '') ? { display: 'none' as const } : undefined;
+};
+
 const syncSongsOnOpen = async () => {
   if (startupSyncPromise) {
     return startupSyncPromise;
@@ -153,9 +160,21 @@ const MainTabs = () => {
           headerShown: false,
         }}
       >
-        <Tab.Screen name="Hymnals" component={SongStack} />
-        <Tab.Screen name="Hagerigna" component={HagerignaStack} />
-      <Tab.Screen name="Favorites" component={FavoritesStack} />
+        <Tab.Screen
+          name="Hymnals"
+          component={SongStack}
+          options={({ route }) => ({ tabBarStyle: getNestedTabBarStyle(route) })}
+        />
+        <Tab.Screen
+          name="Hagerigna"
+          component={HagerignaStack}
+          options={({ route }) => ({ tabBarStyle: getNestedTabBarStyle(route) })}
+        />
+      <Tab.Screen
+        name="Favorites"
+        component={FavoritesStack}
+        options={({ route }) => ({ tabBarStyle: getNestedTabBarStyle(route) })}
+      />
         <Tab.Screen name="Music" component={MusicPlayer} />
         <Tab.Screen name="Settings" component={Settings} />
       </Tab.Navigator>

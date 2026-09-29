@@ -13,7 +13,9 @@ import FullScreenVerse from './../FullScreenVerse';
 import MoreMenu from './../MoreMenu';
 import SheetMusicViewer from './../SheetMusicViewer';
 import AudioPlayer from './../AudioPlayer';
-import SelectableLyrics from './../SelectableLyrics';
+import SelectableLyrics, { LyricSelection } from './../SelectableLyrics';
+import LyricSelectionSheet from './../LyricSelectionSheet';
+import HymnImageCreator from './../HymnImageCreator';
 import SuggestEditSheet from './../SuggestEditSheet';
 import { hymnalService, HagerignaHymn } from '../../services/hymnalService';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -53,6 +55,9 @@ const HagerignaDetail = () => {
   const [isSheetMusicVisible, setIsSheetMusicVisible] = useState(false);
   const [isAudioVisible, setIsAudioVisible] = useState(false);
   const [isSuggestEditVisible, setIsSuggestEditVisible] = useState(false);
+  const [selectedLyrics, setSelectedLyrics] = useState<LyricSelection | null>(null);
+  const [isLyricSelectionVisible, setIsLyricSelectionVisible] = useState(false);
+  const [isImageCreatorVisible, setIsImageCreatorVisible] = useState(false);
   const [song, setSong] = useState<HagerignaHymn>(initialSong);
   const [fullSongData, setFullSongData] = useState<HagerignaHymn | null>(null);
   const [allSongs, setAllSongs] = useState<HagerignaHymn[]>([]);
@@ -109,8 +114,17 @@ const HagerignaDetail = () => {
   const handleCloseSheetMusic = () => setIsSheetMusicVisible(false);
   const handleOpenAudio = () => setIsAudioVisible(true);
   const handleCloseAudio = () => setIsAudioVisible(false);
-  const handleOpenSuggestEdit = () => setIsSuggestEditVisible(true);
   const handleCloseSuggestEdit = () => setIsSuggestEditVisible(false);
+  const handleSelectLyrics = (selection: LyricSelection) => {
+    setSelectedLyrics(selection);
+    setIsLyricSelectionVisible(true);
+  };
+  const handleCloseLyricSelection = () => setIsLyricSelectionVisible(false);
+  const handleOpenImageCreator = () => {
+    setIsLyricSelectionVisible(false);
+    setIsImageCreatorVisible(true);
+  };
+  const handleCloseImageCreator = () => setIsImageCreatorVisible(false);
 
   const hasSheetMusic = fullSongData?.sheet_music && fullSongData.sheet_music.length > 0;
   const hasAudio = !!fullSongData?.audio;
@@ -220,11 +234,15 @@ const HagerignaDetail = () => {
 
   const handleJumpToSong = (songNum: number) => {
     const newSongIndex = songNum - 1;
-    if (newSongIndex < 0 || newSongIndex >= totalSongs) return;
+    if (newSongIndex < 0 || newSongIndex >= totalSongs) {
+      return;
+    }
 
     setNumpadVisible(false);
     const nextSong = allSongs[newSongIndex];
-    if (!nextSong) return;
+    if (!nextSong) {
+      return;
+    }
 
     navigation.setParams({ song: nextSong, songNumber: songNum });
   };
@@ -425,6 +443,7 @@ const HagerignaDetail = () => {
                 text={song.song}
                 style={dynamicStyles.lyrics}
                 selectionColor={accentColor}
+                onSelectSection={handleSelectLyrics}
               />
               </View>
               {/* <TouchableOpacity
@@ -509,6 +528,21 @@ const HagerignaDetail = () => {
           onClose={handleCloseSuggestEdit}
           hymnalType="hagerigna"
           hymn={fullSongData || song}
+        />
+        <LyricSelectionSheet
+          visible={isLyricSelectionVisible}
+          selection={selectedLyrics}
+          onClose={handleCloseLyricSelection}
+          onCreateImage={handleOpenImageCreator}
+        />
+        <HymnImageCreator
+          visible={isImageCreatorVisible}
+          selection={selectedLyrics}
+          songTitle={song.title}
+          songNumber={songNumber}
+          englishTitle={song.artist}
+          sourceType="hagerigna"
+          onClose={handleCloseImageCreator}
         />
       </GlassBackground>
     </GestureDetector>
